@@ -10,6 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   at release time (see `cliff.toml` and the release automation in `.github/workflows/`).
 - Compare views: <https://github.com/frederico-kluser/watch-pilot/compare/>
 
+## [0.1.1](https://github.com/frederico-kluser/watch-pilot/compare/v0.1.0...v0.1.1) (2026-10-22)
+
+
+### Features
+
+* **infra:** keep watch.kluser.me up after reboot ([#9](https://github.com/frederico-kluser/watch-pilot/issues/9)) ([59d5350](https://github.com/frederico-kluser/watch-pilot/commit/59d5350911ed085b033e2932773d2571a029d92f))
+* **watch:** replace the orb with an animated character ([#12](https://github.com/frederico-kluser/watch-pilot/issues/12)) ([72c273d](https://github.com/frederico-kluser/watch-pilot/commit/72c273d8a2c4361bbd555ef830816644478634d4))
+* **watch:** trace the T-800 head and drop the on-screen caption ([#14](https://github.com/frederico-kluser/watch-pilot/issues/14)) ([c0b3034](https://github.com/frederico-kluser/watch-pilot/commit/c0b3034d8a2e8ebbd6d8d8d5906cf46fcf0aa9fc))
+
+
+### Documentation
+
+* point the design notes at the animation skill ([#13](https://github.com/frederico-kluser/watch-pilot/issues/13)) ([bc92a93](https://github.com/frederico-kluser/watch-pilot/commit/bc92a93880e34f9943bda629fd2b15086829c174))
+
 ## 0.1.0 (2026-10-22)
 
 
