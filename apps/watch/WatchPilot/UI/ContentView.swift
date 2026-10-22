@@ -46,6 +46,12 @@ struct ContentView: View {
             if arguments.contains("-WPLiveSmoke") {
                 Task { await controller.runLiveSmokeTest() }
             }
+            if arguments.contains("-WPNoNotifications") {
+                controller.suppressPermissionPrompt = true
+            }
+            if let index = arguments.firstIndex(of: "-WPAttachTask"), index + 1 < arguments.count {
+                controller.attachToTask(arguments[index + 1])
+            }
             #endif
         }
         .sheet(isPresented: $showDetails) { SessionDetailsView() }
