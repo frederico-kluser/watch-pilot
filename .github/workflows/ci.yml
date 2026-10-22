@@ -1,0 +1,122 @@
+# =============================================================================
+# CI — watch-pilot (frederico-kluser/watch-pilot)
+#
+# NOTA (para o agente): fixe as actions por SHA com `bash scripts/oss-pin-actions.sh`
+# antes do primeiro push. Formato obrigatório em TODOS os `uses:`:
+#     owner/repo@<PIN_SHA> # vX.Y.Z
+# Um workflow com `<PIN_SHA>` literal não corre; substitua sempre o placeholder
+# pelo commit SHA real da tag indicada no comentário.
+#
+# Os blocos de setup de linguagem são NEUTROS: adapte-os à stack do projeto
+# (setup-node / setup-python / setup-go) e aos scripts de lint/test reais.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+
+# Privilégio mínimo: o CI só precisa de ler o repositório.
+permissions:
+  contents: read
+
+# Evita corridas duplicadas e desperdiçadas no mesmo PR/ramo.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & format
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@<PIN_SHA> # v4.2.2
+
+      # Setup de linguagem NEUTRO — adapte à stack:
+      #   Python: actions/setup-python@<PIN_SHA> # v5.x
+      #   Go:     actions/setup-go@<PIN_SHA> # v5.x
+      - name: Set up toolchain
+        uses: actions/setup-node@<PIN_SHA> # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies (locked)
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+  test:
+    name: Test & build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@<PIN_SHA> # v4.2.2
+
+      - name: Set up toolchain
+        uses: actions/setup-node@<PIN_SHA> # v4.4.0
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies (locked)
+        run: npm ci
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      # Cobertura (opcional): descomente e fixe por SHA como as restantes.
+      # - name: Upload coverage
+      #   uses: codecov/codecov-action@<PIN_SHA> # v5.4.0
+      #   with:
+      #     files: ./coverage/lcov.info
+      #     fail_ci_if_error: true
+
+  # Job AGREGADOR — o seu NOME (`build`) é o `context` exigido pelo ruleset
+  # (assets/rulesets/regras-main.json). Não renomeie sem atualizar o ruleset.
+  # Além de agregar lint+test, valida as mensagens de commit: é assim que os
+  # Conventional Commits são impostos TAMBÉM no servidor — a regra de metadata
+  # `commit_message_pattern` é Enterprise-only, enquanto este check funciona em
+  # qualquer plano e bloqueia o merge com mensagens fora do padrão.
+  build:
+    name: build
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@<PIN_SHA> # v4.2.2
+
+      - name: Commits convencionais (últimos 25)
+        run: |
+          python3 - <<'PY'
+          import re, subprocess, sys
+          header = re.compile(r'^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]*\))?!?: .+')
+          skip = re.compile(r'^(Merge |Revert "|Reapply "|fixup!|squash!)')
+          out = subprocess.run(['git', 'log', '--pretty=tformat:%s', '-n', '25', 'HEAD'],
+                               capture_output=True, text=True).stdout
+          bad = 0
+          for s in out.splitlines():
+              s = s.strip()
+              if not s or skip.match(s):
+                  continue
+              h = re.sub(r'\s+\(#\d+\)$', '', s)   # sufixo "(#N)" do squash não conta
+              if not header.match(h) or len(h) > 72:
+                  print('ERRO: mensagem fora de Conventional Commits:', s); bad = 1
+              else:
+                  print('OK  :', s)
+          sys.exit(bad)
+          PY

@@ -1,0 +1,152 @@
+{
+  "interface_type": "mobile-app",
+  "interface_type_note": "Standalone watchOS wearable app (Apple Watch SE 40 mm, 184x224 pt, single screen, six states). Evaluated with Part 1 (Foundations) as required for every type, plus Part 2 (error prevention, consistency/standards), Part 3 (progressive disclosure, hierarchy), Part 4 (Fitts's law, touch targets), Part 5 (AI-native transparency, conversational flow) and Part 6 concerns surfaced through the legibility finding. Screenshots of all six states were inspected and every finding was verified against the SwiftUI source, not inferred from the description alone.",
+  "overall_score": 43,
+  "band": "fair",
+  "findings": [
+    {
+      "id": "finding-1",
+      "principle": {
+        "code": "D.1.1.01",
+        "slug": "progressive-disclosure",
+        "title": "Progressive Disclosure",
+        "part": "part-3"
+      },
+      "severity": "critical",
+      "message": "The primary payload - the assistant's answer - has no route to its full content. `statusBlock` renders it with `lineLimit(4)` and `minimumScaleFactor(0.72)` inside a band that is capped by the fixed orb and button; on a 184 pt-wide face a 4-line block holds roughly 90-110 characters, so any longer reply is first shrunk to about 9.4 pt and then silently ellipsised. There is no ScrollView, no 'ver mais', no tap-to-expand, no sheet and no copy affordance, and the only other copy of the text is the notification body, itself clipped by `lastReply.prefix(140)` in `apply(_:)`. The single CTA in this state ('Novo comando') calls `toggleRecording()` and destroys the answer immediately. The demo screenshot 04 happens to fit inside four lines, so the defect is invisible in design review but certain in production for any multi-item or summarised reply.",
+      "remediation": "Give the answer an exit. Keep `lineLimit(4)` for the glance, but (a) set `minimumScaleFactor` to 1.0 so overflow is honest, and (b) present a fifth-band `Button('Ver tudo')` (or make the headline tappable via `.onTapGesture`) that opens a `ScrollView` sheet bound to the already-persisted `controller.lastReply`; show the reply full length in a `.body` style there. Keep `lastReply` alive until an explicit new command (it already survives in the controller), and only clear it in `resetSession()`. Measurable outcome: every reply of any length is fully readable in at most two taps, and no state displays an ellipsised answer.",
+      "business_impact": null
+    },
+    {
+      "id": "finding-2",
+      "principle": {
+        "code": "S.1.1.01",
+        "slug": "conversational-flow",
+        "title": "Conversational Flow",
+        "part": "part-5"
+      },
+      "severity": "warning",
+      "message": "The turn cannot be interrupted. While `phase.isBusy` (uploading/waiting) the orb button is `.disabled`, the CTA is `.disabled(controller.phase.isBusy && !canRetry)` and `toggleRecording()` itself falls through when `phase.isBusy`, so the entire screen is inert; `retryLastTask()` exists but is never reachable from the UI, and the session sheet that could reset the task cannot be opened. A 'reasoning max' request can run for tens of seconds, so a user who mis-spoke, changed their mind or no longer wants the result must wait for the hub or force-quit the app. Conversational turn-taking on a wrist requires barge-in; today the only exit from the 'A processar...' band is patience. The 120 s upload timeout and 30 s poll timeout mean a hung hub looks identical to slow progress.",
+      "remediation": "Make the busy state interactive instead of dead: when `phase.isBusy`, swap the CTA for an enabled 'Cancelar' `Button` (`tint(Palette.muted)`, `arrow.left`/`xmark` icon) that cancels `pollingTask` and calls `resetSession()`; remove `.disabled(controller.phase.isBusy)` from `orbButton` and let it cancel too (guard inside `toggleRecording()` for `.uploading`/`.waiting`). Keep the progress ring as the status, not as a lock. Outcome: a mis-spoken or unwanted command is abandoned in one tap, and a hung hub never traps the user.",
+      "business_impact": null
+    },
+    {
+      "id": "finding-3",
+      "principle": {
+        "code": "C.1.4.01",
+        "slug": "error-prevention",
+        "title": "Error Prevention",
+        "part": "part-2"
+      },
+      "severity": "warning",
+      "message": "The error state's recovery action contradicts its own promise. In `.failed`, `primaryAction()` calls `controller.resetSession()`, which sets `phase = .idle`, clears `activeTaskID` and wipes `lastReply`; `retryLastTask()` - the only method that would re-attach to the failed task - has no caller anywhere in the app. So 'Tentar de novo' (reinforced by the hint 'Toca para tentar de novo') never retries anything: it is a silent 'start over' that forces the user to re-dictate the whole command, the most expensive input on a watch. Nothing preserves the transcript for a resend, and the recorded file survives only until the next launch (`VoiceRecorder.purgeOldRecordings(keepNewest: 1)`), with no UI path to re-upload it. The pairing path is a closed loop: the `beginRecording` guard shows 'Emparelha o relogio com o Mac mini primeiro.' -> 'Tentar de novo' -> idle -> tap -> the same error, while `savePairingSecret` has no caller and the sheet that explains pairing does not open. Transport errors are additionally surfaced as raw `error.localizedDescription` strings rather than typed copy with a next step.",
+      "remediation": "Split `.failed` into two recoverable shapes. (a) Task/transport failure with a kept task id: CTA 'Repetir envio' wired to a real re-upload of the retained file (or `retryLastTask()` when the task is still running) - one tap, no re-dictation. (b) Failure the app cannot fix (not paired, Keychain missing): do not offer retry; offer `Button('Como emparelhar')` that presents the pairing sheet. Map `HubClient.Failure` to a small enum of typed Portuguese messages, each carrying its next step, and show that enum's string instead of `error.localizedDescription`. Outcome: zero dead-end loops; a failed command costs at most one tap to recover.",
+      "business_impact": null
+    },
+    {
+      "id": "finding-4",
+      "principle": {
+        "code": "S.1.3.01",
+        "slug": "ai-transparency",
+        "title": "AI Transparency",
+        "part": "part-5"
+      },
+      "severity": "warning",
+      "message": "The screen never tells the user what the machine heard or where the audio went. `TaskStatus.transcript` is decoded but used only as a fallback inside `lastReply`; neither the listening, waiting nor answering state displays it, so a misrecognised command is undetectable both before and after the round trip - the single most common failure mode of voice input, and here the user's only defence is to re-record and hope. Provenance is also thin: the destination of the audio (a hub on the LAN), its retention and the TOTP pairing are documented only inside `SessionDetailsView`, which is unreachable, and the only on-screen transparency cue is the 9.5 pt idle hint 'Comando de voz para o Mac mini'. The answer footnote does show backend and latency, which is good, but it does not say which machine that backend is.",
+      "remediation": "Surface the transcript where it pays off: in `.waiting`, replace the generic hint with the recognised text ('Ouvi: ...', from `status.transcript`) and in `.answering` add it as the secondary line so a strange answer can be attributed to bad recognition. Extend the answer footnote from 'backend - latency' to include the hub host from `Bundle.main.object(forInfoDictionaryKey: 'WPHubBaseURL')`, and make the warning badge (see finding-6) open the session sheet. Outcome: every uploaded command is verifiable from the wrist in one glance, and the user can always answer 'what did it hear and where did it go?'.",
+      "business_impact": null
+    },
+    {
+      "id": "finding-5",
+      "principle": {
+        "code": "F.1.1.02",
+        "slug": "cognitive-load",
+        "title": "Cognitive Load",
+        "part": "part-1"
+      },
+      "severity": "warning",
+      "message": "The text that carries the information is smaller than the platform's own smallest style and does not scale. The hint line is a hard-coded `.system(size: 9.5, ...)` (smaller than watchOS caption2 at default size); the headline uses `.footnote` with `minimumScaleFactor(0.72)`, so a four-line answer bottoms out near 9.4 pt; `primaryTitle` is fixed at `.system(size: 13)`, the session rows at 12 and the row values at 11. None of these use Dynamic Type text styles or relative sizing, so a user who raised their watchOS text size - or simply reads at wrist distance - gets no relief, and the answer becomes the smallest type on the screen precisely when it is the most important content. On a glanceable surface, sub-11 pt copy forces a second, closer look, which is exactly the interaction the wrist cannot afford.",
+      "remediation": "Replace the literals with text styles and let the layout yield instead of the type: `.font(.footnote)` for the hint, `.font(.subheadline.weight(.semibold))` for the headline, `.font(.headline)` for the CTA label, `.font(.caption2)` for the session row labels. Drop `minimumScaleFactor` from the headline (see finding-1) so overflow goes to the expanded view rather than to smaller glyphs, and cap the range with `.dynamicTypeSize(...DynamicTypeSize.accessibility1)` so the fixed-height orb and CTA bands stay intact. Outcome: no body copy below 11 pt at any size setting, and the two text bands scale from xS to AX1 without clipping.",
+      "business_impact": null
+    },
+    {
+      "id": "finding-6",
+      "principle": {
+        "code": "C.1.1.01",
+        "slug": "consistency-and-standards",
+        "title": "Consistency and Standards",
+        "part": "part-2"
+      },
+      "severity": "warning",
+      "message": "The interface claims a diagnostic path that does not exist. `@State private var showSessionDetails` is declared and bound to `.sheet(isPresented:)`, but no control, gesture or state change ever sets it to `true`, so `SessionDetailsView` (hub URL, secret source, active task, 'Terminar sessao') is unreachable dead UI - the design description's 'session details are behind a sheet' is not implemented as an affordance. What remains is the pairing signal: an `exclamationmark.lock.fill` overlaid on the orb at 11 pt, icon-only, non-interactive, with no visible label and no action, whose explanation lives in the sheet that cannot open. When the badge appears, the user has a warning they cannot decode and no way to act on it; `savePairingSecret` also has no caller, so there is no on-device pairing path at all. The result is a visible state with no corresponding, reachable control - a consistency break between what the UI shows and what it lets you do.",
+      "remediation": "Give the badge a job and a label. Wrap the overlay in a 44x44 `Button` with `.contentShape(Rectangle())` that sets `showSessionDetails = true`, and when `!controller.pairingReady` replace the generic hint with a visible line ('Nao emparelhado - ver sessao') so the state is readable without decoding an icon. If a permanent entry point is unwanted on a one-screen app, a `.onLongPressGesture` on the orb is an acceptable secondary trigger. Outcome: one tap from the warning to its explanation, and the sheet is reachable from every state.",
+      "business_impact": null
+    },
+    {
+      "id": "finding-7",
+      "principle": {
+        "code": "I.2.2.02",
+        "slug": "fitts-law",
+        "title": "Fitts's Law",
+        "part": "part-4"
+      },
+      "severity": "warning",
+      "message": "Two large targets compete for the same tap 2 pt apart (`VStack(spacing: 2)`): an 84x78 pt orb and a full-width `borderedProminent` button. In idle, listening and answering both invoke the identical `toggleRecording()`, so the pair is redundancy, not choice; meanwhile the idle copy 'Toca para falar' sits between them without naming its referent, forcing the user to guess which of two equally highlighted things is 'the' control - a genuine decision cost on a 3-second glance. In `.failed` the pair finally diverges: the button resets to idle while the orb starts a new recording, so a 2 pt miss silently takes the wrong branch. The orb's hit region also does not match its visual: the glow is drawn at roughly 48 pt radius around a 23 pt body inside a 42x39 pt half-frame, so part of what looks tappable (and is visibly bright) is outside the `contentShape( Rectangle())`.",
+      "remediation": "Make one control primary and honest. Keep the full-width button as the sole CTA and demote the orb to status - or, if the orb must stay tappable, expand its hit region to cover the drawn halo with an explicit shape (`.frame(width: 96, height: 96).contentShape(Circle())`, or `.contentShape(Rectangle())` on the whole top band) and separate it from the CTA by at least 16 pt. Then make the copy unambiguous ('Toca o orbe ou o botao') and remove the failed-state divergence by making the orb inert while `.failed`, or giving both targets the same action. Outcome: zero mis-taps that change behaviour, and every visibly bright pixel of the orb is hittable.",
+      "business_impact": null
+    }
+  ],
+  "strengths": [
+    {
+      "principle": {
+        "code": "I.2.2.02",
+        "slug": "fitts-law",
+        "title": "Fitts's Law"
+      },
+      "message": "The primary action is always large and can never be displaced: the orb is fixed at 84x78 pt, the CTA is full-width and at least 44 pt tall, and only `statusBlock` flexes (`layoutPriority(1)`, `minHeight: 58, maxHeight: .infinity`), so a long answer cannot push the button off a 40 mm face. Fitts's law is correctly applied to target size and stability."
+    },
+    {
+      "principle": {
+        "code": "F.1.1.02",
+        "slug": "cognitive-load",
+        "title": "Cognitive Load"
+      },
+      "message": "One screen, one job, three bands, one decision. No navigation, no menus, no settings on the main view, and at most four lines of headline plus two of hint. The whole state model is carried by orb colour + headline + CTA label, which is the right amount of interface for a wrist and well inside working-memory limits."
+    },
+    {
+      "principle": {
+        "code": "D.2.1.02",
+        "slug": "visual-hierarchy",
+        "title": "Visual Hierarchy"
+      },
+      "message": "State colour is systematic and legible: each phase owns one accent and the orb, headline and CTA share it (blue/pink/violet/mint/red). Measured against the 0.020/0.031/0.047 OLED background, mint reads 14.3:1, red 7.2:1 and the muted hint 6.0:1 - all at or above WCAG AA - and no state is encoded by colour alone, since each also has its own headline string, hint and label."
+    },
+    {
+      "principle": {
+        "code": "S.1.3.01",
+        "slug": "ai-transparency",
+        "title": "AI Transparency"
+      },
+      "message": "The wrist-down promise is actually kept rather than written and forgotten: on completion the app posts a local notification with the reply (`String(lastReply.prefix(140))`) and plays `.success`, and the other transitions fire `.start`, `.stop`, `.failure` and `.retry` haptics. Combined with the explicit hint 'Podes baixar o pulso - aviso quando terminar' and background refresh, the user gets multimodal confirmation without extra screen furniture."
+    },
+    {
+      "principle": {
+        "code": "C.1.1.01",
+        "slug": "consistency-and-standards",
+        "title": "Consistency and Standards"
+      },
+      "message": "Accessibility semantics are written into the screen, not bolted on: the orb and CTA expose phase-derived `.accessibilityLabel` and `.accessibilityHint`, the badge is labelled, and `accessibilityReduceMotion` pauses the `TimelineView` animation - details most single-screen watch apps skip."
+    }
+  ],
+  "priority_fixes": [
+    "finding-1",
+    "finding-3",
+    "finding-2",
+    "finding-4",
+    "finding-5",
+    "finding-7",
+    "finding-6"
+  ],
+  "api_enriched": false,
+  "api_note": "No UXUI_API_KEY is present in this environment (`printenv UXUI_API_KEY` returns nothing), so the uxuiprinciples `audit` endpoint was not called and no principle metadata could be fetched: findings were derived by applying the framework from internal knowledge, every `business_impact` is null, and no citations are attached. Install the uxuiprinciples API key for enriched findings with citations and business impact data. See uxuiprinciples.com/en/checkout"
+}

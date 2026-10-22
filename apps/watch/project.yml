@@ -1,0 +1,40 @@
+name: WatchPilot
+options:
+  bundleIdPrefix: me.kluser
+  deploymentTarget:
+    watchOS: "11.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    TARGETED_DEVICE_FAMILY: "4"
+    WATCHOS_DEPLOYMENT_TARGET: "11.0"
+
+targets:
+  WatchPilot:
+    type: application
+    platform: watchOS
+    sources:
+      # Folder scanning: new Swift files are picked up by re-running `xcodegen
+      # generate`. `Pairing.plist` is provisioned by scripts/install-app.sh and is
+      # git-ignored, so a fresh clone builds without it.
+      - path: WatchPilot
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: me.kluser.watchpilot
+        PRODUCT_NAME: WatchPilot
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: WatchPilot/Info.plist
+        SDKROOT: watchos
+        SKIP_INSTALL: NO
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_EMIT_LOC_STRINGS: YES
+        ENABLE_PREVIEWS: YES
+    scheme:
+      testTargets: []
+      gatherCoverageData: false

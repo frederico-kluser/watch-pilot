@@ -1,0 +1,30 @@
+# --- secrets and local state ------------------------------------------------
+.env
+*.secret
+*.key
+*.p8
+Pairing.plist
+apps/watch/WatchPilot/Pairing.plist
+
+# --- python ----------------------------------------------------------------
+server/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# --- runtime data ----------------------------------------------------------
+server/uploads/
+*.jsonl.log
+data/
+
+# --- xcode -----------------------------------------------------------------
+apps/watch/WatchPilot.xcodeproj/project.xcworkspace/xcuserdata/
+apps/watch/WatchPilot.xcodeproj/xcuserdata/
+DerivedData/
+*.xcuserstate
+.build/
+server/bin/wtx-transcribe
+
+# --- macOS -----------------------------------------------------------------
+.DS_Store
