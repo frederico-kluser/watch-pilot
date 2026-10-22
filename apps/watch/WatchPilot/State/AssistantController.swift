@@ -38,6 +38,18 @@ final class AssistantController {
             await self?.refreshActiveTask()
         }
         VoiceRecorder.purgeOldRecordings()
+
+        // A wrist-down or a phone call can take the microphone away; ship what was
+        // captured rather than showing "A ouvir…" over a dead input.
+        recorder.onCaptureInterrupted = { [weak self] url in
+            Task { @MainActor [weak self] in
+                guard let self, self.phase.isRecording else { return }
+                self.meteringTask?.cancel()
+                self.meteringTask = nil
+                self.phase = .uploading
+                await self.send(fileURL: url)
+            }
+        }
     }
 
     // MARK: - User intent

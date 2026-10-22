@@ -22,6 +22,13 @@ final class VoiceRecorder: NSObject, AVAudioRecorderDelegate {
     private(set) var recorder: AVAudioRecorder?
     private(set) var currentURL: URL?
 
+    /// Fires when the system takes the microphone away mid-recording — wrist down,
+    /// another app, a call. The audio captured so far is still valid, so the owner
+    /// should upload it instead of leaving the orb claiming to listen to a dead mic.
+    var onCaptureInterrupted: ((URL) -> Void)?
+
+    private var observers: [NSObjectProtocol] = []
+
     var isRecording: Bool { recorder?.isRecording ?? false }
 
     /// Start a new recording, replacing any previous take.
@@ -57,6 +64,7 @@ final class VoiceRecorder: NSObject, AVAudioRecorderDelegate {
             }
             self.recorder = recorder
             self.currentURL = url
+            observeInterruptions()
         } catch let failure as Failure {
             // Never leave the microphone open — nor other audio ducked by `.duckOthers` —
             // when the start fails after the session was activated. Nobody else in the app
@@ -100,6 +108,59 @@ final class VoiceRecorder: NSObject, AVAudioRecorderDelegate {
         let decibels = Double(recorder.peakPower(forChannel: 0))
         let clamped = min(0, max(-55, decibels))
         return (clamped + 55) / 55
+    }
+
+    // MARK: - Interruptions
+
+    /// `AVAudioRecorder` never tells its delegate that capture stopped because the
+    /// session was deactivated (`AVAudioRecorder.h`: the delegate is only called when
+    /// recording finishes on its own), so the session notifications are the only
+    /// reliable signal.
+    private func observeInterruptions() {
+        guard observers.isEmpty else { return }
+        let center = NotificationCenter.default
+
+        if #available(watchOS 27.0, *) {
+            observers.append(
+                center.addObserver(
+                    forName: AVAudioSession.didBecomeInactiveNotification,
+                    object: nil,
+                    queue: .main
+                ) { [weak self] _ in
+                    self?.captureWasInterrupted()
+                }
+            )
+        }
+
+        // Delivered on every watchOS this app supports. Deprecated in 27 in favour of
+        // the notification above, but still the only one older systems emit.
+        observers.append(
+            center.addObserver(
+                forName: AVAudioSession.interruptionNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] note in
+                let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+                guard raw == AVAudioSession.InterruptionType.began.rawValue else { return }
+                self?.captureWasInterrupted()
+            }
+        )
+    }
+
+    private func captureWasInterrupted() {
+        guard let recorder, recorder.isRecording else { return }
+        let url = recorder.url
+        recorder.stop()
+        self.recorder = nil
+        self.currentURL = url
+        Self.deactivateSession()
+        onCaptureInterrupted?(url)
+    }
+
+    deinit {
+        for observer in observers {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     // MARK: - Audio session
