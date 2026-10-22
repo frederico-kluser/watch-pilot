@@ -163,6 +163,10 @@ tail -f ~/.local/state/watchpilot/uvicorn.log
 If you keep the project on the internal disk, a plain LaunchAgent is enough — the SSH
 indirection is only about TCC on removable volumes.
 
+The same daemon also starts a **route watchdog** that re-asserts `watch.kluser.me` at
+boot and whenever the tunnel route disappears, so the subdomain comes back on its own.
+Full architecture, measured timings and the port map: [`INFRA.md`](INFRA.md).
+
 ## 6. Notifications
 
 ### Free route ($0): iMessage relay

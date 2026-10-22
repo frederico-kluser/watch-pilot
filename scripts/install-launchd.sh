@@ -22,6 +22,7 @@ TARGET_HOME="$(dscl . -read "/Users/$TARGET_USER" NFSHomeDirectory | awk '{print
 [[ -d "$TARGET_HOME" ]] || TARGET_HOME="/Users/$TARGET_USER"
 
 LABEL="com.watchpilot.hub"
+PORT="${WATCHPILOT_PORT:-8765}"
 PLIST="/Library/LaunchDaemons/$LABEL.plist"
 KEY="$TARGET_HOME/.ssh/watchpilot_hub_ed25519"
 WRAPPER="$TARGET_HOME/.local/bin/watch-pilot-hub.sh"
@@ -51,9 +52,10 @@ if [[ $DRY -eq 0 ]]; then
   fi
 fi
 
-say "2/4 · wrapper em disco interno"
+say "2/4 · wrapper + watchdog de rota em disco interno"
 if [[ $DRY -eq 0 ]]; then
   mkdir -p "$(dirname "$WRAPPER")" "$STATE"
+  install -m 755 "$HERE/scripts/watch-pilot-route.sh" "$(dirname "$WRAPPER")/watch-pilot-route.sh"
   cat > "$WRAPPER" <<WRAP
 #!/usr/bin/env bash
 # Managed by watch-pilot/scripts/install-launchd.sh — do not edit.
@@ -61,8 +63,22 @@ set -euo pipefail
 cd "$HERE/server"
 export WATCHPILOT_DATA_DIR="\$HOME/.local/share/watch-pilot"
 if [[ -f "\$HOME/.config/watch-pilot/env" ]]; then set -a; . "\$HOME/.config/watch-pilot/env"; set +a; fi
-exec "$HERE/server/.venv/bin/python" -m uvicorn app.main:app \\
-  --host 127.0.0.1 --port \${WATCHPILOT_PORT:-8765} >> "\$HOME/.local/state/watchpilot/uvicorn.log" 2>&1
+
+# 1) watch.kluser.me must come back on its own after a reboot: the route watchdog
+#    re-asserts the Cloudflare route (the hub alone cannot do it). Detached with its
+#    own lock so a restart of this session never leaves two watchers fighting.
+if [[ -x "\$HOME/.local/bin/watch-pilot-route.sh" ]]; then
+  nohup setsid "\$HOME/.local/bin/watch-pilot-route.sh" >/dev/null 2>&1 &
+fi
+
+# 2) the hub runs as a child (not exec) so that when sshd hangs up this session we
+#    can take uvicorn down with it. With exec, a bootout/reboot leaves an orphan
+#    holding :8765 and the next start dies with "address already in use".
+"$HERE/server/.venv/bin/python" -m uvicorn app.main:app \\
+  --host 127.0.0.1 --port \${WATCHPILOT_PORT:-8765} >> "\$HOME/.local/state/watchpilot/uvicorn.log" 2>&1 &
+UV=\$!
+trap 'kill -TERM "\$UV" 2>/dev/null' TERM INT HUP EXIT
+wait "\$UV"
 WRAP
   chmod 755 "$WRAPPER"
   # Everything the service touches must belong to the login user: this script runs as
@@ -109,6 +125,16 @@ PLIST
 fi
 
 say "4/4 · carregar"
+if [[ $DRY -eq 0 ]]; then
+  # A previous run that was not supervised (or an older exec-based wrapper) can leave
+  # an orphan on the port; the new job would then boot-loop with EADDRINUSE.
+  stale=$(/usr/sbin/lsof -nP -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null || true)
+  if [[ -n "$stale" ]]; then
+    echo "  a libertar a porta $PORT de processos não supervisionados: $stale"
+    sudo -n kill $stale 2>/dev/null || true
+    sleep 2
+  fi
+fi
 run sudo launchctl bootout system "$PLIST" 2>/dev/null || true
 run sudo launchctl bootstrap system "$PLIST"
 run sudo launchctl enable "system/$LABEL"
