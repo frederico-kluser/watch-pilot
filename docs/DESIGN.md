@@ -77,22 +77,37 @@ python3 ~/Agent-Skills/watch-pilot-animation-agent-skill/scripts/anim-doctor.py 
 
 Animoji/Memoji cannot be rendered by third parties (private framework; no ARKit or
 RealityKit on watchOS — see [`research/Q8-memoji-animoji.md`](research/Q8-memoji-animoji.md)),
-so the avatar is a **T-800 endoskeleton skull** drawn with `Canvas` — chrome dome,
-angular orbits, glowing red pupils, teeth rows, jaw pistons — and every state is an
-`AvatarPose` value (eye glow, gaze, jaw, head scan, ring speed, waveform amplitude,
-glitch) rather than a branch in the drawing code. The HUD around it (reticle ring,
-corner brackets, ruler ticks, scanner marks, glyphs, Cyberdyne logo, dot-matrix
-waveform) is part of the same canvas and animates with the state.
+so the avatar is a **T-800 endoskeleton skull** — and it is not drawn by hand: it is
+**traced from the reference visor** (`design/reference/t800-visor.jpg`) so it matches
+the mockup to the pixel (MAE 5.2 inside the skull, 1.4 % of pixels off by more than
+45/255). The tracer (`scripts/design/trace-head.py`) emits 17 flat-metal layers plus
+the silhouette into `T800HeadArt.swift`; the renderer (`T800Head.swift`) paints them
+in *unit space* and animates:
 
-[`watchpilot-flow.gif`](design/watchpilot-flow.gif) is a real recording of the simulator
-running a live hub task.
+* **pupils** — procedural, so they glow, dilate, look around and flicker out;
+* **jaw** — the lower group (teeth, mandible, chin panels) drops into a black mouth
+  cavity; pistons and cheek struts come from the same traced art;
+* **head** — sweep (yaw with foreshortening), tilt, lean-in, nod on the syllables;
+* **failure** — the head tears into 12 displaced slices while the chrome dims.
+
+Every difference between states is a number in `AvatarPose` (eye glow/scale/look,
+jaw, speech level, yaw, chrome, glitch); there is no `switch` in the drawing code.
+The HUD around it (reticle ring, corner brackets, ruler ticks, scanner marks,
+glyphs, Cyberdyne logo, dot-matrix waveform) is part of the same canvas.
+
+The head's geometry, the measured grid and the **animation contract** (which signals
+the functionality has to feed — mainly `speechLevel`, the real playback level) are
+in [`design/t800-head.md`](design/t800-head.md).
+[`design/t800-head.gif`](design/t800-head.gif) is a real recording of the simulator
+talking; [`design/watchpilot-flow.gif`](design/watchpilot-flow.gif) is the older
+end-to-end hub run.
 
 ## Motion
 
 `TimelineView(.animation)` drives a `Canvas` at 30 Hz — no `Timer`, no per-frame
 state change. Reduce Motion pauses the timeline, and the state is still legible
-because colour and copy carry it. The dot-matrix waveform is the only element that
-moves with the voice (mic power while listening, speech cadence while answering);
+because colour and copy carry it. The jaw, the pupils and the dot-matrix waveform are the elements that
+move with the voice (mic power while listening, speech cadence while answering);
 everything else — the rotating ring, the scanning tick marks, the head sweep, the
 jaw — breathes on slow, mutually non-multiple periods so the visor never loops
 visibly.

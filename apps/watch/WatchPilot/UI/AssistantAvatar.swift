@@ -50,6 +50,7 @@ struct AvatarPose {
     // Cabeça
     var headTilt: Double     // rotação base, radianos
     var headScale: Double    // aproximação (escuta = inclina-se para ti)
+    var headYaw: Double      // −1…1: vira a cabeça (aperto + paralaxe das peças)
     var scanning: Bool       // varredura lenta esquerda↔direita
     // HUD
     var accent: Color        // vermelho Cyberdyne dos olhos e do HUD
@@ -62,6 +63,9 @@ struct AvatarPose {
     // Waveform
     var waveAmplitude: Double // 0…1, altura das barras de pontos
     var waveSpeech: Bool     // padrão de fala (resposta) vs. padrão ambiente
+    /// Nível real de fala do T-800 (0…1) medido na reprodução do áudio da resposta.
+    /// `-1` mantém a cadência sintética, enquanto o hub devolver texto.
+    var speechLevel: Double
 
     init(
         eyeGlow: Double = 0.72,
@@ -72,6 +76,7 @@ struct AvatarPose {
         speaking: Bool = false,
         headTilt: Double = 0,
         headScale: Double = 1,
+        headYaw: Double = 0,
         scanning: Bool = false,
         accent: Color = Palette.crimson,
         chrome: Double = 1,
@@ -81,7 +86,8 @@ struct AvatarPose {
         hudPulse: Bool = false,
         hudGlitch: Bool = false,
         waveAmplitude: Double = 0.6,
-        waveSpeech: Bool = false
+        waveSpeech: Bool = false,
+        speechLevel: Double = -1
     ) {
         self.eyeGlow = eyeGlow
         self.eyeScale = eyeScale
@@ -91,6 +97,7 @@ struct AvatarPose {
         self.speaking = speaking
         self.headTilt = headTilt
         self.headScale = headScale
+        self.headYaw = headYaw
         self.scanning = scanning
         self.accent = accent
         self.chrome = chrome
@@ -101,6 +108,7 @@ struct AvatarPose {
         self.hudGlitch = hudGlitch
         self.waveAmplitude = waveAmplitude
         self.waveSpeech = waveSpeech
+        self.speechLevel = speechLevel
     }
 
     static func forPhase(_ phase: AssistantPhase) -> AvatarPose {
@@ -108,38 +116,39 @@ struct AvatarPose {
         case .idle:
             // Em espera: olhos em brasa, cabeça a varrer devagar, waveform calma
             // mas presente — o visor nunca parece desligado.
-            return AvatarPose(scanning: true, ringSpeed: 5)
+            return AvatarPose(headYaw: 0.15, scanning: true, ringSpeed: 5)
         case .listening(let power):
             // A ouvir: pupilas abertas e brilhantes, cantos a pulsar, a waveform
             // é o microfone — a amplitude já vem escalada pelo `power`.
             return AvatarPose(
                 eyeGlow: 0.85 + power * 0.15, eyeScale: 1.12,
-                headScale: 1.02, ringSpeed: 16,
+                headScale: 1.02, headYaw: -0.10 + power * 0.12, ringSpeed: 16,
                 hudPulse: true, waveAmplitude: 0.25 + power * 0.75
             )
         case .uploading:
             // A enviar: olhar para cima, linha de varredura a subir o anel.
             return AvatarPose(
                 eyeGlow: 0.9, eyeLook: CGSize(width: 0, height: -2.6),
-                ringSpeed: 26, scanLine: true, waveAmplitude: 0.4
+                headYaw: 0.05, ringSpeed: 26, scanLine: true, waveAmplitude: 0.4
             )
         case .waiting(let progress, _):
             // A pensar: varredura de busca e o anel mostra o progresso real.
             return AvatarPose(
-                eyeGlow: 0.8, scanning: true,
+                eyeGlow: 0.8, headYaw: 0.1, scanning: true,
                 ringSpeed: 34, ringProgress: progress, waveAmplitude: 0.35
             )
         case .answering:
             // A responder: a maxila fala e a waveform cospe a voz.
             return AvatarPose(
-                eyeGlow: 1, speaking: true,
-                ringSpeed: 10, waveAmplitude: 0.9, waveSpeech: true
+                eyeGlow: 1, jawOpen: 0.06, speaking: true,
+                headYaw: 0.06, ringSpeed: 10, waveAmplitude: 0.9, waveSpeech: true
             )
         case .failed:
             // Falha: metal baço, olho direito a falhar, HUD em glitch.
             return AvatarPose(
-                eyeGlow: 0.45, eyeFlicker: true, headTilt: -0.06,
-                chrome: 0.72, ringSpeed: 0, hudGlitch: true, waveAmplitude: 0.06
+                eyeGlow: 0.45, eyeFlicker: true, jawOpen: 0.16, headTilt: -0.06,
+                headYaw: -0.08, chrome: 0.72, ringSpeed: 0, hudGlitch: true,
+                waveAmplitude: 0.06
             )
         }
     }
@@ -166,14 +175,15 @@ enum AvatarRenderer {
 
         let glitch = glitchValue(time)
         let w = size.width, h = size.height
-        let skullCenter = CGPoint(x: w / 2, y: h * 0.42)
-        let unit = min(h * 0.235, w * 0.30)
-        let ringRadius = w * 0.232
+        // Medido na referência: centro a 43,3 % da altura, meia-altura 30,7 % da largura.
+        let skullCenter = CGPoint(x: w / 2, y: h * 0.433)
+        let unit = min(h * 0.307, w * 0.3066)
+        let ringRadius = w * 0.300
 
         drawBackdrop(in: &context, center: skullCenter, ringRadius: ringRadius, pose: pose)
         drawHUDFrame(in: &context, size: size, ringRadius: ringRadius, skullCenter: skullCenter, time: time, pose: pose, glitch: glitch)
         drawReticle(in: &context, center: skullCenter, radius: ringRadius, time: time, pose: pose, glitch: glitch)
-        drawSkull(in: &context, center: skullCenter, unit: unit, time: time, pose: pose, glitch: glitch)
+        drawSkull(in: &context, center: skullCenter, unit: unit, time: time, pose: pose)
         if pose.scanLine {
             drawScanLine(in: &context, center: skullCenter, radius: ringRadius, time: time, pose: pose)
         }
@@ -430,231 +440,43 @@ enum AvatarRenderer {
 
     // MARK: o crânio T-800
 
-    private static func drawSkull(in context: inout GraphicsContext, center c: CGPoint, unit u: Double, time: TimeInterval, pose: AvatarPose, glitch: Double) {
-        // A cabeça roda/escala como um todo: varredura, inclinação e a queda na falha.
+    // MARK: o crânio T-800
+
+    /// The head is `T800Head`: flat metal traced from the reference visor, driven
+    /// by the pose. Everything that changes between states is a number in
+    /// `AvatarPose` — the drawing code has no `switch`.
+    private static func drawSkull(in context: inout GraphicsContext, center c: CGPoint, unit u: Double, time: TimeInterval, pose: AvatarPose) {
         var head = context
         head.translateBy(x: c.x, y: c.y)
         head.rotate(by: .radians(pose.headTilt))
         head.scaleBy(x: pose.headScale, y: pose.headScale)
         head.translateBy(x: -c.x, y: -c.y)
 
-        func p(_ x: Double, _ y: Double) -> CGPoint { CGPoint(x: c.x + x * u, y: c.y + y * u) }
-        let b = pose.chrome
-        let chromeLight = Color(red: 0.84 * b, green: 0.87 * b, blue: 0.92 * b)
-        let chromeMid = Color(red: 0.56 * b, green: 0.61 * b, blue: 0.69 * b)
-        let chromeDark = Color(red: 0.28 * b, green: 0.31 * b, blue: 0.39 * b)
-        let cavity = Color(red: 0.045, green: 0.05, blue: 0.07)
-        let jawDrop = pose.jawOpen * 0.16
+        let speech = pose.speechLevel >= 0
+            ? pose.speechLevel
+            : (pose.speaking ? Self.speechEnvelope(time) : 0)
+        var p = HeadPose()
+        p.eyeGlow = pose.eyeGlow
+        p.eyeScale = pose.eyeScale
+        p.eyeLook = CGSize(width: pose.eyeLook.width / u, height: pose.eyeLook.height / u)
+        p.eyeFlicker = pose.eyeFlicker
+        p.jawOpen = pose.jawOpen
+        p.speech = pose.speechLevel >= 0 ? speech : speech * pose.waveAmplitude * 1.1
+        p.headTilt = 0                        // já aplicado acima
+        p.headScale = 1
+        p.headYaw = pose.headYaw + (pose.scanning ? sin(time * 0.45) * 0.55 : 0)
+        p.nod = sin(time * 1.7) * 0.35 + speech * sin(time * 7.3) * 0.9
+        p.chrome = pose.chrome
+        p.tear = pose.hudGlitch ? 0.35 + 0.25 * sin(time * 5.1) : 0
 
-        // 1 · Silhueta — cúpula, maçãs, maxila e queixo num só metal.
-        var skull = Path()
-        skull.move(to: p(0, -1.06))
-        skull.addCurve(to: p(0.60, -0.52), control1: p(0.30, -1.09), control2: p(0.52, -0.90))
-        skull.addCurve(to: p(0.63, -0.24), control1: p(0.66, -0.44), control2: p(0.65, -0.34))
-        skull.addCurve(to: p(0.55, 0.10), control1: p(0.62, -0.10), control2: p(0.60, 0.02))
-        skull.addCurve(to: p(0.38, 0.66), control1: p(0.52, 0.30), control2: p(0.46, 0.50))
-        skull.addCurve(to: p(0.24, 0.99), control1: p(0.34, 0.82), control2: p(0.30, 0.92))
-        skull.addQuadCurve(to: p(-0.24, 0.99), control: p(0, 1.12))
-        skull.addCurve(to: p(-0.38, 0.66), control1: p(-0.30, 0.92), control2: p(-0.34, 0.82))
-        skull.addCurve(to: p(-0.55, 0.10), control1: p(-0.46, 0.50), control2: p(-0.52, 0.30))
-        skull.addCurve(to: p(-0.63, -0.24), control1: p(-0.60, 0.02), control2: p(-0.62, -0.10))
-        skull.addCurve(to: p(-0.60, -0.52), control1: p(-0.65, -0.34), control2: p(-0.66, -0.44))
-        skull.addCurve(to: p(0, -1.06), control1: p(-0.52, -0.90), control2: p(-0.30, -1.09))
-        skull.closeSubpath()
-
-        head.fill(
-            skull,
-            with: .linearGradient(
-                Gradient(colors: [chromeLight, chromeMid, chromeDark]),
-                startPoint: p(-0.4, -1.0), endPoint: p(0.4, 1.05)
-            )
-        )
-        head.stroke(skull, with: .color(cavity.opacity(0.6)), style: StrokeStyle(lineWidth: 1))
-
-        // Brilho especular no topo esquerdo da cúpula.
-        let gloss = Path(ellipseIn: CGRect(x: c.x - 0.48 * u, y: c.y - 1.02 * u, width: 0.52 * u, height: 0.30 * u))
-        head.fill(gloss, with: .color(.white.opacity(0.07)))
-
-        // 2 · Faixa das sobrancelhas + placa da testa.
-        var brow = Path()
-        brow.move(to: p(-0.60, -0.34))
-        brow.addQuadCurve(to: p(0.60, -0.34), control: p(0, -0.47))
-        brow.addLine(to: p(0.58, -0.15))
-        brow.addQuadCurve(to: p(-0.58, -0.15), control: p(0, -0.23))
-        brow.closeSubpath()
-        head.fill(brow, with: .color(chromeMid.opacity(0.85)))
-        head.stroke(brow, with: .color(cavity.opacity(0.45)), style: StrokeStyle(lineWidth: 0.8))
-
-        var plate = Path()
-        plate.move(to: p(-0.17, -0.52))
-        plate.addLine(to: p(0.17, -0.52))
-        plate.addLine(to: p(0.11, -0.30))
-        plate.addQuadCurve(to: p(-0.11, -0.30), control: p(0, -0.26))
-        plate.closeSubpath()
-        head.fill(plate, with: .color(chromeDark))
-        head.stroke(plate, with: .color(cavity.opacity(0.5)), style: StrokeStyle(lineWidth: 0.6))
-
-        // 3 · Órbitas + olhos vermelhos.
-        let eyeOut = pose.eyeFlicker && glitch > 0.62
-        for side in [-1.0, 1.0] {
-            let socketCenter = p(side * 0.30, 0.03)
-            func s(_ x: Double, _ y: Double) -> CGPoint {
-                CGPoint(x: socketCenter.x + x * u, y: socketCenter.y + y * u)
-            }
-            var socket = Path()
-            socket.move(to: s(-0.175, -0.09))
-            socket.addLine(to: s(-0.10, -0.15))
-            socket.addLine(to: s(0.13, -0.135))
-            socket.addLine(to: s(0.185, -0.02))
-            socket.addLine(to: s(0.13, 0.115))
-            socket.addLine(to: s(-0.10, 0.14))
-            socket.addLine(to: s(-0.185, 0.01))
-            socket.closeSubpath()
-            head.fill(socket, with: .color(cavity))
-            head.stroke(socket, with: .color(chromeLight.opacity(0.30)), style: StrokeStyle(lineWidth: 0.9))
-
-            let thisSideOut = eyeOut && side > 0
-            let glow = pose.eyeGlow * (thisSideOut ? 0.15 : 1)
-            let eyeCenter = CGPoint(
-                x: socketCenter.x + pose.eyeLook.width,
-                y: socketCenter.y + pose.eyeLook.height
-            )
-            let eyeR = 0.105 * u * pose.eyeScale
-
-            // Halo vermelho à volta da pupila.
-            let haloR = eyeR * (2.2 + glow * 0.6)
-            head.fill(
-                Path(ellipseIn: CGRect(x: eyeCenter.x - haloR, y: eyeCenter.y - haloR, width: haloR * 2, height: haloR * 2)),
-                with: .radialGradient(
-                    Gradient(colors: [pose.accent.opacity(0.45 * glow), .clear]),
-                    center: eyeCenter, startRadius: eyeR * 0.3, endRadius: haloR
-                )
-            )
-            // A pupila: núcleo quente → vermelho → borda profunda.
-            head.fill(
-                Path(ellipseIn: CGRect(x: eyeCenter.x - eyeR, y: eyeCenter.y - eyeR, width: eyeR * 2, height: eyeR * 2)),
-                with: .radialGradient(
-                    Gradient(colors: [
-                        Color(red: 1, green: 0.72, blue: 0.66).opacity(0.35 + 0.65 * glow),
-                        pose.accent.opacity(0.55 + 0.45 * glow),
-                        Color(red: 0.42, green: 0.02, blue: 0.03),
-                    ]),
-                    center: CGPoint(x: eyeCenter.x - eyeR * 0.2, y: eyeCenter.y - eyeR * 0.2),
-                    startRadius: eyeR * 0.08, endRadius: eyeR
-                )
-            )
-            head.stroke(
-                Path(ellipseIn: CGRect(x: eyeCenter.x - eyeR, y: eyeCenter.y - eyeR, width: eyeR * 2, height: eyeR * 2)),
-                with: .color(cavity.opacity(0.8)), style: StrokeStyle(lineWidth: 0.8)
-            )
-
-            // Parafuso no exterior da órbita.
-            let bolt = p(side * 0.615, -0.01)
-            head.fill(
-                Path(ellipseIn: CGRect(x: bolt.x - 0.018 * u, y: bolt.y - 0.018 * u, width: 0.036 * u, height: 0.036 * u)),
-                with: .color(cavity.opacity(0.85))
-            )
-        }
-
-        // 4 · Nariz — a fenda escura em seta.
-        var nose = Path()
-        nose.move(to: p(0, 0.14))
-        nose.addLine(to: p(0.055, 0.40))
-        nose.addQuadCurve(to: p(-0.055, 0.40), control: p(0, 0.47))
-        nose.closeSubpath()
-        head.fill(nose, with: .color(cavity))
-
-        // 5 · Maçãs do rosto — painéis escuros que afunilam para a maxila.
-        for side in [-1.0, 1.0] {
-            var cheek = Path()
-            cheek.move(to: p(side * 0.20, 0.24))
-            cheek.addLine(to: p(side * 0.52, 0.14))
-            cheek.addLine(to: p(side * 0.46, 0.44))
-            cheek.addQuadCurve(to: p(side * 0.24, 0.42), control: p(side * 0.34, 0.36))
-            cheek.closeSubpath()
-            head.fill(cheek, with: .color(chromeDark.opacity(0.5)))
-        }
-
-        // 6 · Cavidade da boca + dentes superiores (fixos no crânio).
-        let mouth = CGRect(x: c.x - 0.28 * u, y: c.y + 0.47 * u, width: 0.56 * u, height: (0.30 + jawDrop) * u)
-        head.fill(Path(roundedRect: mouth, cornerRadius: 0.05 * u), with: .color(cavity))
-        drawTeethRow(in: &head, center: c, unit: u, top: 0.505, height: 0.125, width: 0.50, count: 6)
-
-        // 7 · Grupo da maxila — dentes inferiores + queixo descem com a fala.
-        var jaw = head
-        jaw.translateBy(x: 0, y: jawDrop * u)
-        drawTeethRow(in: &jaw, center: c, unit: u, top: 0.66, height: 0.095, width: 0.46, count: 6)
-
-        var chin = Path()
-        chin.move(to: p(-0.27, 0.78))
-        chin.addLine(to: p(0.27, 0.78))
-        chin.addQuadCurve(to: p(0.20, 0.97), control: p(0.26, 0.90))
-        chin.addQuadCurve(to: p(-0.20, 0.97), control: p(0, 1.06))
-        chin.addQuadCurve(to: p(-0.27, 0.78), control: p(-0.26, 0.90))
-        chin.closeSubpath()
-        jaw.fill(
-            chin,
-            with: .linearGradient(
-                Gradient(colors: [chromeMid, chromeDark]),
-                startPoint: p(0, 0.78), endPoint: p(0, 1.0)
-            )
-        )
-        jaw.stroke(chin, with: .color(cavity.opacity(0.5)), style: StrokeStyle(lineWidth: 0.8))
-
-        // 8 · Pistões laterais — esticam quando a maxila desce.
-        for side in [-1.0, 1.0] {
-            var piston = Path()
-            piston.move(to: p(side * 0.47, 0.22))
-            piston.addLine(to: p(side * 0.30, 0.68 + jawDrop * 0.7))
-            head.stroke(piston, with: .color(chromeDark), style: StrokeStyle(lineWidth: 0.055 * u, lineCap: .round))
-            head.stroke(piston, with: .color(chromeLight.opacity(0.55)), style: StrokeStyle(lineWidth: 0.018 * u, lineCap: .round))
-        }
-
-        // 9 · Detalhes da cúpula: junta central, placa circular, placa em losango.
-        var seam = Path()
-        seam.move(to: p(0, -1.05))
-        seam.addLine(to: p(0, -0.56))
-        head.stroke(seam, with: .color(cavity.opacity(0.5)), style: StrokeStyle(lineWidth: 0.9))
-
-        let plateCenter = p(-0.27, -0.82)
-        head.stroke(
-            Path(ellipseIn: CGRect(x: plateCenter.x - 0.075 * u, y: plateCenter.y - 0.06 * u, width: 0.15 * u, height: 0.12 * u)),
-            with: .color(cavity.opacity(0.6)), style: StrokeStyle(lineWidth: 1)
-        )
-        head.fill(
-            Path(ellipseIn: CGRect(x: plateCenter.x - 0.018 * u, y: plateCenter.y - 0.014 * u, width: 0.036 * u, height: 0.028 * u)),
-            with: .color(cavity.opacity(0.6))
-        )
-
-        var diamond = Path()
-        let d = p(0.31, -0.74)
-        diamond.move(to: CGPoint(x: d.x, y: d.y - 0.055 * u))
-        diamond.addLine(to: CGPoint(x: d.x + 0.05 * u, y: d.y))
-        diamond.addLine(to: CGPoint(x: d.x, y: d.y + 0.055 * u))
-        diamond.addLine(to: CGPoint(x: d.x - 0.05 * u, y: d.y))
-        diamond.closeSubpath()
-        head.fill(diamond, with: .color(chromeDark))
+        T800Head.draw(in: &head, center: c, unit: u, pose: p, time: time)
     }
 
-    private static func drawTeethRow(in context: inout GraphicsContext, center c: CGPoint, unit u: Double, top: Double, height: Double, width: Double, count: Int) {
-        let gap = 0.012
-        let toothWidth = (width - gap * Double(count - 1)) / Double(count)
-        let startX = -width / 2
-        for index in 0..<count {
-            let x = c.x + (startX + Double(index) * (toothWidth + gap)) * u
-            let rect = CGRect(x: x, y: c.y + top * u, width: toothWidth * u, height: height * u)
-            context.fill(
-                Path(roundedRect: rect, cornerRadius: 0.018 * u),
-                with: .linearGradient(
-                    Gradient(colors: [
-                        Color(red: 0.94, green: 0.95, blue: 0.96),
-                        Color(red: 0.72, green: 0.75, blue: 0.80),
-                    ]),
-                    startPoint: CGPoint(x: x, y: rect.minY),
-                    endPoint: CGPoint(x: x, y: rect.maxY)
-                )
-            )
-        }
+    /// Cadência de fala sintética — usada enquanto o hub devolve texto. Quando o
+    /// áudio do T-800 tocar no relógio, o nível real entra em `pose.speechLevel`.
+    private static func speechEnvelope(_ time: TimeInterval) -> Double {
+        let syllable = max(0, sin(time * 7.3)) * (0.45 + 0.55 * (0.5 + 0.5 * sin(time * 1.31)))
+        return min(1, 0.15 + syllable)
     }
 
     // MARK: waveform de pontos
