@@ -15,6 +15,10 @@ final class AssistantController {
     private(set) var lastLatencyMilliseconds: Int?
     private(set) var usedBackend: String?
 
+    /// When true, a completed task does not ask for notification permission — used by
+    /// `scripts/screenshot-states.sh` so the system alert does not cover the UI.
+    var suppressPermissionPrompt = false
+
     /// Survives a suspend/resume cycle so the orb reattaches to a running task.
     private(set) var activeTaskID: String? {
         didSet { UserDefaults.standard.set(activeTaskID, forKey: Self.taskDefaultsKey) }
@@ -209,6 +213,12 @@ final class AssistantController {
             RuntimeCoordinator.shared.stopExtendedRuntime()
             let coordinator = RuntimeCoordinator.shared
             Task {
+                #if DEBUG
+                if self.suppressPermissionPrompt {
+                    coordinator.postLocalNotification(title: "Watch Pilot", body: String(lastReply.prefix(140)))
+                    return
+                }
+                #endif
                 await coordinator.requestPermissionIfNeeded()
                 coordinator.postLocalNotification(
                     title: "Watch Pilot",
@@ -257,6 +267,20 @@ final class AssistantController {
             phase = .failed(message: "Mac mini inacessível: ligação recusada")
         default:
             phase = .idle
+        }
+    }
+
+    /// Attach to a task that already exists on the hub (created by the CLI), so a
+    /// simulator run can show genuine progress and a genuine answer.
+    func attachToTask(_ id: String) {
+        activeTaskID = id
+        Task { [weak self] in
+            guard let self else { return }
+            if let status = try? await self.client.progress(taskID: id) {
+                self.apply(status)
+                if status.isFinished { return }
+            }
+            self.startPolling(taskID: id)
         }
     }
 

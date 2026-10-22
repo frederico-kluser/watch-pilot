@@ -82,3 +82,9 @@ Rendered from the simulator with `scripts/screenshot-states.sh`:
 | --- | --- | --- |
 | ![idle](design/screenshots/01-idle.png) | ![listening](design/screenshots/02-listening.png) | ![thinking](design/screenshots/03-thinking.png) |
 | ![answer](design/screenshots/04-answer.png) | ![error](design/screenshots/05-error.png) | ![hub](design/screenshots/06-live-hub.png) |
+
+`07-real-progress.png` é diferente das restantes: o app foi lançado com
+`-WPAttachTask <id>` e está a seguir uma tarefa **real** no hub (o texto "Ouvi: …"
+é a transcrição verdadeira e os 45 % são o estado verdadeiro da tarefa). As imagens
+01–05 usam `-WPDemoPhase <estado>` para congelar o orbe num estado; a 06 é a prova de
+ligação por TOTP dentro do watchOS.
