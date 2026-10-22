@@ -62,8 +62,8 @@ struct ContentView: View {
 
     private var orbButton: some View {
         Button(action: { controller.toggleRecording() }) {
-            AnimatedAssistantOrb(phase: controller.phase, isReduceMotion: reduceMotion)
-                .frame(width: 78, height: 72)
+            AssistantAvatar(phase: controller.phase, isReduceMotion: reduceMotion)
+                .frame(width: 96, height: 92)
                 .contentShape(Circle())
         }
         .buttonStyle(.plain)

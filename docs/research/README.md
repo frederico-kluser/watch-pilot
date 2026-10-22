@@ -11,7 +11,8 @@ Pesquisa profunda do watch-pilot (protocolo `tavily-agent-skill`, flag `--deep-r
 | [Q4-apns-notifications.md](Q4-apns-notifications.md) | O Mac pode ser o provider APNs e o Watch recebe push directo, mas só com Apple Developer Program pago; a alternativa grátis é iMessage. |
 | [Q5-openrouter-mimo.md](Q5-openrouter-mimo.md) | `xiaomi/mimo-v2.6-pro` é real e barato, mas `reasoning.effort` não chega ao provider: profundidade vem do prompt; DeepInfra é o melhor endpoint. |
 | [Q6-totp.md](Q6-totp.md) | TOTP cabe em ~90 linhas de CryptoKit, sem dependências, com 44 vectores byte-idênticos entre Swift e Python. |
-| [Q6b-cloudflare-publish.md](Q6b-cloudflare-publish.md) | Publicar em `watch.kluser.me` exige porta 8420, isenção do TOTP do runner e LaunchDaemon (TCC bloqueia `/Volumes` a qualquer job de launchd). |
+| [Q6b-cloudflare-publish.md](Q6b-cloudflare-publish.md) | Publicar em `watch.kluser.me` exige isenção do TOTP do runner e LaunchDaemon (TCC bloqueia `/Volumes` a qualquer job de launchd); a rota é reposta por watchdog. |
+| [Q8-memoji-animoji.md](Q8-memoji-animoji.md) | Animoji/Memoji não têm API pública (AvatarKit é privado; o watchOS não tem ARKit nem RealityKit); a alternativa foi um personagem vectorial próprio com poses por estado. |
 
 Nota: o nó Q3 ficou `inatingivel` no dossiê (§8) por ser um nó de *código*, não de pesquisa web; foi
 fechado depois por revisão directa do SDK instalado + build — ver [Q3-audio-capture.md](Q3-audio-capture.md).
