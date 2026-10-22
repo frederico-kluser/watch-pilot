@@ -6,7 +6,8 @@
 [![platform](https://img.shields.io/badge/platform-watchOS%2011%2B%20%C2%B7%20macOS%2026%2B-lightgrey.svg)](#requirements)
 [![model](https://img.shields.io/badge/LLM-xiaomi%2Fmimo--v2.6--pro-5ef2c0.svg)](#the-reasoning-step)
 
-A voice assistant that lives on your wrist and thinks on your own Mac.
+A voice assistant that lives on your wrist and thinks on your own Mac — with a
+little animated character that changes pose with every state.
 
 You speak into an **Apple Watch SE**. The audio goes to a **Mac mini M1** on your
 network (or through your own Cloudflare tunnel), is transcribed **on-device** by
@@ -22,7 +23,7 @@ Apple Watch SE                     Mac mini M1                      OpenRouter
 │ AVAudioRecorder  │ ─────────► │ FastAPI hub :8765        │ ───► │ MiMo 2.6 Pro │
 │ 16 kHz mono AAC  │  X-Watch-  │  • TOTP verification     │      │ effort: max  │
 │                  │   TOTP     │  • SpeechAnalyzer (CLI)  │ ◄─── │              │
-│ animated orb     │ ◄───────── │  • progress + notify API │      └──────────────┘
+│ animated avatar  │ ◄───────── │  • progress + notify API │      └──────────────┘
 │ TOTP generator   │  progress  │  • iMessage / APNs relay │
 └──────────────────┘            └──────────────────────────┘
        │                                    ▲
@@ -134,6 +135,19 @@ One measured caveat matters: **OpenRouter accepts `effort` but does not forward 
 comparable token counts. The real depth comes from the system prompt, which asks the
 model to enumerate options and check its arithmetic before compressing the answer.
 See [`docs/research/Q5-openrouter-mimo.md`](docs/research/Q5-openrouter-mimo.md).
+
+## The face: why not a Memoji
+
+Apple exposes **no public API** to create or animate Animoji/Memoji: the renderer
+(`AvatarKit`) is a private framework, and watchOS ships neither ARKit nor RealityKit
+(so no face-driven 3D avatar). What *is* public — `NSAdaptiveImageGlyph`, watchOS 11+ —
+only displays a user's Genmoji/Memoji as a static glyph inside text.
+
+So the character is ours: a vector robot drawn in `Canvas`, with the pose as **data**
+(`AvatarPose`) per state — perked antennae while listening, eyes looking around while
+thinking, `^^` eyes and a bounce on the answer, drooped antennae and X eyes on failure.
+Evidence and sources: [`docs/research/Q8-memoji-animoji.md`](docs/research/Q8-memoji-animoji.md).
+The animated GIF is [`docs/design/watchpilot-flow.gif`](docs/design/watchpilot-flow.gif).
 
 ## Design decisions worth knowing
 

@@ -10,7 +10,8 @@ Three bands, fixed order, never re-arranged:
 
 ```
 ┌──────────────────────┐
-│        ◉ orb         │   optical target: state, colour, motion
+│      ╭──────╮        │   the character: state, colour, pose, motion
+│      │ ◉  ◉ │        │
 │                      │
 │   headline (1–4 ln)  │   what is happening, or the answer
 │   "Ouvi: …"          │   what the hub actually heard
@@ -22,19 +23,19 @@ Three bands, fixed order, never re-arranged:
 └──────────────────────┘
 ```
 
-The orb and the button never flex, so a long answer can never push the primary action
+The character and the button never flex, so a long answer can never push the primary action
 off the screen; the copy band scrolls inside its slice instead of clipping.
 
 ## State → colour → copy
 
-| State | Orb | Headline | Action |
+| State | Pose | Headline | Action |
 | --- | --- | --- | --- |
-| idle | blue sphere, slow breath | "Toca para falar" | Gravar voz |
-| listening | pink, 20 voice bars driven by mic power | "A ouvir…" | Enviar |
-| uploading | amber, 3 orbiting sparks | "A enviar ao Mac mini…" | Cancelar |
-| waiting | violet, progress ring | "62% · A pensar com o MiMo 2.6 Pro…" | Cancelar |
-| answering | mint | the answer itself | Ver tudo |
-| failed | red-orange | the error, in words | Tentar de novo / Ver estado |
+| idle | eyes open, slow breath + blink, antennae half | "Toca para falar" | Gravar voz |
+| listening | antennae up, mouth opens with mic power | "A ouvir…" | Enviar |
+| uploading | gazes up, arc waves, small mouth | "A enviar ao Mac mini…" | Cancelar |
+| waiting | eyes wander, head sways, thinking dots | "62% · A pensar com o MiMo 2.6 Pro…" | Cancelar |
+| answering | `^^` eyes, grin, bounce | the answer itself | Ver tudo |
+| failed | X eyes, frown, drooped antennae | the error, in words | Tentar de novo / Ver estado |
 
 ## Principles applied (and where the audit pushed back)
 
@@ -59,6 +60,18 @@ Two audit findings were deliberately **not** acted on, because they were wrong o
 inapplicable: contrast is measured at 6.0–14.3:1 (no violation), and the 44 pt target
 rule is already satisfied. The debug-only smoke-test copy is not user-facing.
 
+## The character instead of a Memoji
+
+Animoji/Memoji cannot be rendered by third parties (private framework; no ARKit or
+RealityKit on watchOS — see [`research/Q8-memoji-animoji.md`](research/Q8-memoji-animoji.md)),
+so the avatar is a vector robot drawn with `Canvas`, and every state is a
+`AvatarPose` value (eye openness, gaze, mouth, antennae, tilt, glow, palette) rather
+than a branch in the drawing code.
+
+[`watchpilot-flow.gif`](design/watchpilot-flow.gif) is a real recording of the simulator
+running a live hub task: the character goes from thinking (eyes wandering, dots) to the
+answer (`^^` eyes, bounce) while the text changes.
+
 ## Motion
 
 `TimelineView(.animation)` drives a `Canvas` — no `Timer`, no per-frame state change.
@@ -66,9 +79,9 @@ Reduce Motion pauses the timeline, and the state is still legible because colour
 copy carry it. The listening bars are the only element that moves with the voice;
 everything else breathes slowly enough to read.
 
-## Why the orb is not a button alone
+## Why the character is not a button alone
 
-Fitts's law says the biggest target should do the main thing, so the orb records — but
+Fitts's law says the biggest target should do the main thing, so the character records — but
 a bare tappable sphere is invisible affordance. The labelled full-width button below it
 performs the same action in every state, so the screen is usable without discovering
 that the orb is tappable. In the `failed` state they diverge on purpose: the button

@@ -10,9 +10,9 @@
 		07316AB9F32011BE4A033BC2 /* TotpGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FE6930F985107047114ABD1 /* TotpGenerator.swift */; };
 		09CD5E2ECD549F2AA0115C50 /* Pairing.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8DC6179D88C0DD19241F72C2 /* Pairing.plist */; };
 		21812EBBF096059141531352 /* WatchPilotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA756DB56347240E09084736 /* WatchPilotApp.swift */; };
-		2CA6D772A3EBDC406A971847 /* AnimatedAssistantOrb.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985DF9149FF49C511FF0A9E4 /* AnimatedAssistantOrb.swift */; };
 		38604691CC992A40CD375A89 /* SecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6FF2A16243CB94F3E694FAA /* SecretStore.swift */; };
 		4466C3ABE6E2DB8B3C235850 /* HubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 926A210D9EEC4B07A9006096 /* HubClient.swift */; };
+		6F584FE207C34F854A2CC89B /* AssistantAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D8D69034D3E8A1573AEFEFA /* AssistantAvatar.swift */; };
 		9925DADBE7D0AD7CE4A4BEC5 /* VoiceRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF54CF433E6DDDA68DF77C0C /* VoiceRecorder.swift */; };
 		A36233408C2D67477B59B2F7 /* AssistantController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521BC696E9679FC1D5CF4F95 /* AssistantController.swift */; };
 		A5694EA1777A5C2083824121 /* RuntimeCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F94DFD4FD1696FB03449C735 /* RuntimeCoordinator.swift */; };
@@ -22,6 +22,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0D8D69034D3E8A1573AEFEFA /* AssistantAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantAvatar.swift; sourceTree = "<group>"; };
 		3CB3AF1C6A410847B0A4D9C4 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		3FE6930F985107047114ABD1 /* TotpGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TotpGenerator.swift; sourceTree = "<group>"; };
 		521BC696E9679FC1D5CF4F95 /* AssistantController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantController.swift; sourceTree = "<group>"; };
@@ -29,7 +30,6 @@
 		8DC6179D88C0DD19241F72C2 /* Pairing.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Pairing.plist; sourceTree = "<group>"; };
 		8F008692579F5B183EAC2C0F /* TaskStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TaskStatus.swift; sourceTree = "<group>"; };
 		926A210D9EEC4B07A9006096 /* HubClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubClient.swift; sourceTree = "<group>"; };
-		985DF9149FF49C511FF0A9E4 /* AnimatedAssistantOrb.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnimatedAssistantOrb.swift; sourceTree = "<group>"; };
 		AA756DB56347240E09084736 /* WatchPilotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchPilotApp.swift; sourceTree = "<group>"; };
 		C6FF2A16243CB94F3E694FAA /* SecretStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretStore.swift; sourceTree = "<group>"; };
 		C738BEAE4D4C766D8D9756F6 /* WatchPilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -49,7 +49,7 @@
 		3004B5C05C281E2B237D5B4F /* UI */ = {
 			isa = PBXGroup;
 			children = (
-				985DF9149FF49C511FF0A9E4 /* AnimatedAssistantOrb.swift */,
+				0D8D69034D3E8A1573AEFEFA /* AssistantAvatar.swift */,
 				3CB3AF1C6A410847B0A4D9C4 /* ContentView.swift */,
 				5891D395BA8A73A525BE2909 /* DesignSystem.swift */,
 			);
@@ -207,7 +207,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2CA6D772A3EBDC406A971847 /* AnimatedAssistantOrb.swift in Sources */,
+				6F584FE207C34F854A2CC89B /* AssistantAvatar.swift in Sources */,
 				A36233408C2D67477B59B2F7 /* AssistantController.swift in Sources */,
 				CFDF4218D1D8A686B623AB78 /* ContentView.swift in Sources */,
 				EBF321A38244277F0BB141B8 /* DesignSystem.swift in Sources */,

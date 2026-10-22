@@ -15,33 +15,3 @@ enum Palette {
     static let red = Color(red: 1.0, green: 0.420, blue: 0.420)
     static let violet = Color(red: 0.639, green: 0.518, blue: 1.0)
 }
-
-/// The colours and rhythm the orb adopts for a given phase.
-struct OrbStyle {
-    let core: Color
-    let halo: Color
-    let amplitude: Double
-    let speed: Double
-
-    static func forPhase(_ phase: AssistantPhase) -> OrbStyle {
-        switch phase {
-        case .idle:
-            return OrbStyle(core: Palette.blue, halo: Palette.violet, amplitude: 0.05, speed: 1.6)
-        case .listening(let power):
-            return OrbStyle(
-                core: Palette.pink,
-                halo: Palette.violet,
-                amplitude: 0.10 + power * 0.42,
-                speed: 5.5 + power * 3
-            )
-        case .uploading:
-            return OrbStyle(core: Palette.amber, halo: Palette.pink, amplitude: 0.16, speed: 8.0)
-        case .waiting:
-            return OrbStyle(core: Palette.violet, halo: Palette.blue, amplitude: 0.13, speed: 4.2)
-        case .answering:
-            return OrbStyle(core: Palette.mint, halo: Palette.blue, amplitude: 0.07, speed: 2.2)
-        case .failed:
-            return OrbStyle(core: Palette.red, halo: Palette.amber, amplitude: 0.04, speed: 1.2)
-        }
-    }
-}
