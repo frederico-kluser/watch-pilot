@@ -10,11 +10,22 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# This script needs root to write /Library/LaunchDaemons, but the service must run as
+# the *login* user: `id -un` under sudo is root, which has no key and no FDA.
+TARGET_USER="${SUDO_USER:-$(id -un)}"
+if [[ "$TARGET_USER" == "root" ]]; then
+  echo "Erro: sudo sem SUDO_USER — Solução: corre 'sudo bash scripts/install-launchd.sh' como utilizador normal."
+  exit 1
+fi
+TARGET_HOME="$(dscl . -read "/Users/$TARGET_USER" NFSHomeDirectory | awk '{print $2}')"
+[[ -d "$TARGET_HOME" ]] || TARGET_HOME="/Users/$TARGET_USER"
+
 LABEL="com.watchpilot.hub"
 PLIST="/Library/LaunchDaemons/$LABEL.plist"
-KEY="$HOME/.ssh/watchpilot_hub_ed25519"
-WRAPPER="$HOME/.local/bin/watch-pilot-hub.sh"
-STATE="$HOME/.local/state/watchpilot"
+KEY="$TARGET_HOME/.ssh/watchpilot_hub_ed25519"
+WRAPPER="$TARGET_HOME/.local/bin/watch-pilot-hub.sh"
+STATE="$TARGET_HOME/.local/state/watchpilot"
 DRY=0
 [[ "${1:-}" == "--dry-run" ]] && DRY=1
 
@@ -28,12 +39,12 @@ else
   echo "  já existe: $KEY"
 fi
 if [[ $DRY -eq 0 ]]; then
-  mkdir -p "$HOME/.ssh"
-  touch "$HOME/.ssh/authorized_keys"
-  chmod 600 "$HOME/.ssh/authorized_keys"
+  mkdir -p "$TARGET_HOME/.ssh"
+  touch "$TARGET_HOME/.ssh/authorized_keys"
+  chmod 600 "$TARGET_HOME/.ssh/authorized_keys"
   LINE="command=\"$WRAPPER\",restrict,from=\"127.0.0.1,::1\" $(cat "$KEY.pub")"
-  if ! grep -Fq "watchpilot-hub" "$HOME/.ssh/authorized_keys"; then
-    printf '%s\n' "$LINE" >> "$HOME/.ssh/authorized_keys"
+  if ! grep -Fq "watchpilot-hub" "$TARGET_HOME/.ssh/authorized_keys"; then
+    printf '%s\n' "$LINE" >> "$TARGET_HOME/.ssh/authorized_keys"
     echo "  authorized_keys: entrada adicionada"
   else
     echo "  authorized_keys: entrada já presente"
@@ -54,6 +65,13 @@ exec "$HERE/server/.venv/bin/python" -m uvicorn app.main:app \\
   --host 127.0.0.1 --port \${WATCHPILOT_PORT:-8765} >> "\$HOME/.local/state/watchpilot/uvicorn.log" 2>&1
 WRAP
   chmod 755 "$WRAPPER"
+  # Everything the service touches must belong to the login user: this script runs as
+  # root, so any file it creates is root-owned by default and the wrapper then fails
+  # with "Permission denied" when it tries to append to its log.
+  chown "$TARGET_USER" "$WRAPPER" "$KEY" "$KEY.pub" 2>/dev/null || true
+  chmod 600 "$KEY"
+  chown -R "$TARGET_USER" "$STATE" 2>/dev/null || true
+  chmod 755 "$STATE"
 fi
 
 say "3/4 · LaunchDaemon"
@@ -64,7 +82,7 @@ if [[ $DRY -eq 0 ]]; then
 <plist version="1.0">
 <dict>
     <key>Label</key><string>$LABEL</string>
-    <key>UserName</key><string>$(id -un)</string>
+    <key>UserName</key><string>$TARGET_USER</string>
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/ssh</string>
@@ -74,7 +92,7 @@ if [[ $DRY -eq 0 ]]; then
         <string>-o</string><string>UserKnownHostsFile=/dev/null</string>
         <string>-o</string><string>BatchMode=yes</string>
         <string>-T</string>
-        <string>$(id -un)@127.0.0.1</string>
+        <string>$TARGET_USER@127.0.0.1</string>
     </array>
     <key>RunAtLoad</key><true/>
     <key>KeepAlive</key><true/>
