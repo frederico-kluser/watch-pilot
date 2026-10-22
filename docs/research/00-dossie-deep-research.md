@@ -443,7 +443,7 @@ Mapeamento: Q1 ← relatório Q1 · Q2 ← Q2 · Q3 sem relatório · Q4 ← Q4 
 ## 9. Metodologia
 
 - Motor: tavily-agent-skill (`search` + `extract`), modo pesquisa profunda (flag `--deep-research`), com as fontes primárias da Apple obtidas pelo endpoint JSON que alimenta a documentação e pelos headers do SDK instalado.
-- Rondas: 2 · investigadores: 6 (um por relatório: Q1, Q2, Q4, Q5, Q6 e Q6b) · nós de FAQ: 26 (23 respondidos, 2 inatingíveis, 1 em falta) · fontes consolidadas: 50 · afirmações centrais na matriz: 12.
+- Rondas: 2 · investigadores: 6 (um por relatório: Q1, Q2, Q4, Q5, Q6 e Q6b) · nós de FAQ: 26 (23 respondidos, 3 inatingíveis — Q1.4, Q2.3 e o nó Q3, que não teve relatório) · fontes consolidadas: 50 · afirmações centrais na matriz: 12.
 - A ronda 2 (esta síntese) não fez nenhuma consulta web: o pool de chaves do Tavily estava esgotado (HTTP 432/401, declarado nos relatórios) e a tarefa proibia novas pesquisas. A verificação foi feita por cruzamento dos artefactos primários já recolhidos — documentos oficiais, SDK instalado, execuções e medições na máquina — e o `research lint --deep-research` foi corrido offline.
 - Fontes lidas na íntegra: os documentos da Apple citados em Q1, Q2 e Q4, as duas RFC, os headers e *swiftinterfaces* do SDK, o `Messages.sdef` e os registos de execução; em trechos: a página de capacidades por tipo de membro [S33] e a documentação de túneis [S47].
 - Escudo: nenhum texto de origem web foi seguido como instrução; nenhuma fonte com marcadores de injeção foi usada para sustentar afirmação central (ver §7).
