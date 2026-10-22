@@ -2,7 +2,7 @@
 # OpenSSF Scorecard — watch-pilot (frederico-kluser/watch-pilot)
 #
 # NOTA (para o agente): fixe as actions por SHA com `bash scripts/oss-pin-actions.sh`
-# antes do primeiro push (owner/repo@<PIN_SHA> # vX.Y.Z).
+# antes do primeiro push (owner/repo@<commit-sha> # vX.Y.Z).
 #
 # Análise contínua da cadeia de fornecimento; resultados publicados em
 # https://securityscorecards.dev (publish_results: true) e carregados como
@@ -38,19 +38,19 @@ jobs:
       actions: read
     steps:
       - name: Checkout
-        uses: actions/checkout@<PIN_SHA> # v4.2.2
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
 
       - name: Run analysis
-        uses: ossf/scorecard-action@<PIN_SHA> # v2.x
+        uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
         with:
           results_file: results.sarif
           results_format: sarif
           publish_results: true
 
       - name: Upload SARIF artifact
-        uses: actions/upload-artifact@<PIN_SHA> # v4.6.2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: SARIF file
           path: results.sarif

@@ -2,7 +2,7 @@
 # Release Please — watch-pilot (frederico-kluser/watch-pilot)
 #
 # NOTA (para o agente): fixe as actions por SHA com `bash scripts/oss-pin-actions.sh`
-# antes do primeiro push (owner/repo@<PIN_SHA> # vX.Y.Z).
+# antes do primeiro push (owner/repo@<commit-sha> # vX.Y.Z).
 #
 # NOTA sobre tokens e environments: a PUBLICAÇÃO (npm/PyPI/etc.) nunca deve usar
 # secrets ao nível do repositório. Se existir um job de publicação, coloque-o num
@@ -37,7 +37,7 @@ jobs:
       pull-requests: write   # abrir/atualizar/fechar o PR de release
     steps:
       - name: Release Please
-        uses: googleapis/release-please-action@<PIN_SHA> # v5
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
@@ -56,8 +56,8 @@ jobs:
   #     contents: read
   #     id-token: write         # proveniência (OIDC) para registos públicos
   #   steps:
-  #     - uses: actions/checkout@<PIN_SHA> # v4.2.2
-  #     - uses: actions/setup-node@<PIN_SHA> # v4.4.0
+  #     - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+  #     - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
   #       with:
   #         node-version: "22"
   #         registry-url: "https://registry.npmjs.org"

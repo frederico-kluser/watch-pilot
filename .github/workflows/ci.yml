@@ -1,14 +1,9 @@
 # =============================================================================
-# CI — watch-pilot (frederico-kluser/watch-pilot)
+# CI — watch-pilot
 #
-# NOTA (para o agente): fixe as actions por SHA com `bash scripts/oss-pin-actions.sh`
-# antes do primeiro push. Formato obrigatório em TODOS os `uses:`:
-#     owner/repo@<PIN_SHA> # vX.Y.Z
-# Um workflow com `<PIN_SHA>` literal não corre; substitua sempre o placeholder
-# pelo commit SHA real da tag indicada no comentário.
-#
-# Os blocos de setup de linguagem são NEUTROS: adapte-os à stack do projeto
-# (setup-node / setup-python / setup-go) e aos scripts de lint/test reais.
+# The `build` job is the required status check for `main` (see
+# .github/rulesets/regras-main.json), so its `name:` must stay exactly "build".
+# Actions are pinned by SHA; run `bash scripts/oss-pin-actions.sh` after editing.
 # =============================================================================
 
 name: CI
@@ -19,104 +14,79 @@ on:
       - "main"
   pull_request:
 
-# Privilégio mínimo: o CI só precisa de ler o repositório.
 permissions:
   contents: read
 
-# Evita corridas duplicadas e desperdiçadas no mesmo PR/ramo.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint & format
+  build:
+    name: build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@<PIN_SHA> # v4.2.2
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      # Setup de linguagem NEUTRO — adapte à stack:
-      #   Python: actions/setup-python@<PIN_SHA> # v5.x
-      #   Go:     actions/setup-go@<PIN_SHA> # v5.x
-      - name: Set up toolchain
-        uses: actions/setup-node@<PIN_SHA> # v4.4.0
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          node-version: "22"
-          cache: npm
+          python-version: "3.13"
 
-      - name: Install dependencies (locked)
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Format check
-        run: npm run format:check
-
-  test:
-    name: Test & build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@<PIN_SHA> # v4.2.2
-
-      - name: Set up toolchain
-        uses: actions/setup-node@<PIN_SHA> # v4.4.0
-        with:
-          node-version: "22"
-          cache: npm
-
-      - name: Install dependencies (locked)
-        run: npm ci
-
-      - name: Test
-        run: npm test
-
-      - name: Build
-        run: npm run build
-
-      # Cobertura (opcional): descomente e fixe por SHA como as restantes.
-      # - name: Upload coverage
-      #   uses: codecov/codecov-action@<PIN_SHA> # v5.4.0
-      #   with:
-      #     files: ./coverage/lcov.info
-      #     fail_ci_if_error: true
-
-  # Job AGREGADOR — o seu NOME (`build`) é o `context` exigido pelo ruleset
-  # (assets/rulesets/regras-main.json). Não renomeie sem atualizar o ruleset.
-  # Além de agregar lint+test, valida as mensagens de commit: é assim que os
-  # Conventional Commits são impostos TAMBÉM no servidor — a regra de metadata
-  # `commit_message_pattern` é Enterprise-only, enquanto este check funciona em
-  # qualquer plano e bloqueia o merge com mensagens fora do padrão.
-  build:
-    name: build
-    needs: [lint, test]
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@<PIN_SHA> # v4.2.2
-
-      - name: Commits convencionais (últimos 25)
+      - name: Install hub dependencies
+        working-directory: server
         run: |
-          python3 - <<'PY'
-          import re, subprocess, sys
-          header = re.compile(r'^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([^)]*\))?!?: .+')
-          skip = re.compile(r'^(Merge |Revert "|Reapply "|fixup!|squash!)')
-          out = subprocess.run(['git', 'log', '--pretty=tformat:%s', '-n', '25', 'HEAD'],
-                               capture_output=True, text=True).stdout
-          bad = 0
-          for s in out.splitlines():
-              s = s.strip()
-              if not s or skip.match(s):
-                  continue
-              h = re.sub(r'\s+\(#\d+\)$', '', s)   # sufixo "(#N)" do squash não conta
-              if not header.match(h) or len(h) > 72:
-                  print('ERRO: mensagem fora de Conventional Commits:', s); bad = 1
-              else:
-                  print('OK  :', s)
-          sys.exit(bad)
-          PY
+          python -m pip install --upgrade pip
+          pip install fastapi "uvicorn[standard]" python-multipart "httpx[http2]" pydantic pytest pytest-asyncio
+
+      - name: Byte-compile (syntax gate)
+        run: python -m compileall -q server/app scripts
+
+      - name: Hub test suite
+        working-directory: server
+        run: python -m pytest -q
+
+      - name: Shell syntax gate
+        run: |
+          for script in scripts/*.sh apps/mac-tools/build.sh; do
+            bash -n "$script"
+          done
+
+      - name: Secret scan
+        run: |
+          if grep -rIn --exclude-dir=.git --exclude-dir=.venv \
+               -E "sk-or-v1-[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{30,}|-----BEGIN [A-Z ]*PRIVATE KEY-----" .; then
+            echo "::error::possible secret committed"
+            exit 1
+          fi
+          echo "no obvious secrets"
+
+  swift:
+    name: swift
+    runs-on: macos-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        working-directory: apps/watch
+        run: xcodegen generate --spec project.yml
+
+      - name: Compile the watch app (unsigned)
+        run: |
+          # Build only: needs an SDK, not a simulator runtime.
+          SDK="$(xcodebuild -showsdks | grep -oE 'watchos[0-9.]+' | head -1)"
+          echo "using sdk: $SDK"
+          xcodebuild -project apps/watch/WatchPilot.xcodeproj \
+            -scheme WatchPilot -sdk "$SDK" -configuration Debug \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Compile the transcription CLI
+        run: bash apps/mac-tools/build.sh "$RUNNER_TEMP/bin"
