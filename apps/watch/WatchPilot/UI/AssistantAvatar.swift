@@ -36,6 +36,13 @@ struct AssistantAvatar: View {
 
 // MARK: - Poses
 
+/// Rampa suave (smoothstep de Hermite) entre dois limiares, sempre 0…1.
+/// Função pura e sem estado — usada para misturar cores sem degraus visíveis.
+private func smoothstep(_ edge0: Double, _ edge1: Double, _ value: Double) -> Double {
+    let t = min(1, max(0, (value - edge0) / (edge1 - edge0)))
+    return t * t * (3 - 2 * t)
+}
+
 /// Everything that changes between states, as numbers. The renderer knows nothing
 /// about the app's state machine; it just interpolates this.
 struct AvatarPose {
@@ -63,6 +70,9 @@ struct AvatarPose {
     // Waveform
     var waveAmplitude: Double // 0…1, altura das barras de pontos
     var waveSpeech: Bool     // padrão de fala (resposta) vs. padrão ambiente
+    /// Cor da waveform: azul = captação do microfone, vermelho = fala. O `forPhase`
+    /// mistura as duas continuamente enquanto se ouve (para não piscar).
+    var waveColor: Color
     /// Nível real de fala do T-800 (0…1) medido na reprodução do áudio da resposta.
     /// `-1` mantém a cadência sintética, enquanto o hub devolver texto.
     var speechLevel: Double
@@ -87,7 +97,8 @@ struct AvatarPose {
         hudGlitch: Bool = false,
         waveAmplitude: Double = 0.6,
         waveSpeech: Bool = false,
-        speechLevel: Double = -1
+        speechLevel: Double = -1,
+        waveColor: Color = Palette.crimson
     ) {
         self.eyeGlow = eyeGlow
         self.eyeScale = eyeScale
@@ -108,6 +119,7 @@ struct AvatarPose {
         self.hudGlitch = hudGlitch
         self.waveAmplitude = waveAmplitude
         self.waveSpeech = waveSpeech
+        self.waveColor = waveColor
         self.speechLevel = speechLevel
     }
 
@@ -119,11 +131,17 @@ struct AvatarPose {
             return AvatarPose(headYaw: 0.15, scanning: true, ringSpeed: 5)
         case .listening(let power):
             // A ouvir: pupilas abertas e brilhantes, cantos a pulsar, a waveform
-            // é o microfone — a amplitude já vem escalada pelo `power`.
+            // é o microfone — a amplitude já vem escalada pelo `power`. A cor é
+            // azul (captação em silêncio) e mistura-se para o vermelho (fala)
+            // conforme o power sobe, para nunca piscar entre as duas.
             return AvatarPose(
                 eyeGlow: 0.85 + power * 0.15, eyeScale: 1.12,
                 headScale: 1.02, headYaw: -0.10 + power * 0.12, ringSpeed: 16,
-                hudPulse: true, waveAmplitude: 0.25 + power * 0.75
+                hudPulse: true, waveAmplitude: 0.25 + power * 0.75,
+                waveColor: Palette.blue.mix(
+                    with: Palette.crimson,
+                    by: smoothstep(0.22, 0.40, power)
+                )
             )
         case .uploading:
             // A enviar: olhar para cima, linha de varredura a subir o anel.
@@ -137,11 +155,13 @@ struct AvatarPose {
                 eyeGlow: 0.8, headYaw: 0.1, scanning: true,
                 ringSpeed: 34, ringProgress: progress, waveAmplitude: 0.35
             )
-        case .answering:
-            // A responder: a maxila fala e a waveform cospe a voz.
+        case .answering(_, let level):
+            // A responder: a maxila fala e a waveform cospe a voz. `level >= 0` é o
+            // nível medido no áudio real; `-1` mantém a cadência sintética.
             return AvatarPose(
                 eyeGlow: 1, jawOpen: 0.06, speaking: true,
-                headYaw: 0.06, ringSpeed: 10, waveAmplitude: 0.9, waveSpeech: true
+                headYaw: 0.06, ringSpeed: 10, waveAmplitude: 0.9, waveSpeech: true,
+                speechLevel: level, waveColor: Palette.crimson
             )
         case .failed:
             // Falha: metal baço, olho direito a falhar, HUD em glitch.
@@ -168,7 +188,9 @@ enum AvatarRenderer {
             pose.headTilt += scan * 0.04
         }
         pose.headTilt += sin(time * 0.9) * 0.012
-        if pose.speaking {
+        if pose.speaking, pose.speechLevel < 0 {
+            // Cadência sintética só quando NÃO há áudio real: com `speechLevel >= 0`
+            // a boca segue o nível medido na reprodução (e fecha quando ele chega a 0).
             let cadence = max(0, sin(time * 7.3)) * (0.45 + 0.55 * (0.5 + 0.5 * sin(time * 1.31)))
             pose.jawOpen = 0.10 + 0.72 * cadence
         }
@@ -489,7 +511,9 @@ enum AvatarRenderer {
                 }
             }
         }
-        context.fill(dots, with: .color(pose.accent.opacity(0.92)))
+        // A cor vem da pose: azul na captação, vermelho na fala (só a waveform
+        // muda de cor — o resto do HUD continua crimson).
+        context.fill(dots, with: .color(pose.waveColor.opacity(0.92)))
     }
 
     /// Altura 0…1 de cada barra: soma de senos com períodos não múltiplos, com
@@ -528,7 +552,7 @@ enum AvatarRenderer {
         AssistantAvatar(phase: .idle)
         AssistantAvatar(phase: .listening(power: 0.7))
         AssistantAvatar(phase: .waiting(progress: 0.5, step: "…"))
-        AssistantAvatar(phase: .answering(reply: "Feito"))
+        AssistantAvatar(phase: .answering(reply: "Feito", level: -1))
         AssistantAvatar(phase: .failed(message: "Falhou"))
     }
     .frame(width: 190, height: 231)

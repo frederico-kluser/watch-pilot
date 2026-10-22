@@ -32,8 +32,11 @@ final class AssistantController {
 
     private let recorder = VoiceRecorder()
     private let client = HubClient.fromBundle()
+    /// Toca a fala sintetizada da resposta e mede o nível real de voz.
+    private let replyPlayer = ReplyPlayer()
     private var meteringTask: Task<Void, Never>?
     private var pollingTask: Task<Void, Never>?
+    private var replyAudioTask: Task<Void, Never>?
 
     private init() {
         pairingReady = SecretStore.secret != nil
@@ -82,6 +85,7 @@ final class AssistantController {
         pollingTask = nil
         meteringTask?.cancel()
         meteringTask = nil
+        stopReplyPlayback()
         let pending = activeTaskID
         activeTaskID = nil
         phase = .idle
@@ -100,6 +104,8 @@ final class AssistantController {
             phase = .failed(message: "Emparelha o relógio com o Mac mini primeiro.")
             return
         }
+        // Uma nova gravação cala a resposta anterior.
+        stopReplyPlayback()
         do {
             try recorder.start()
         } catch {
@@ -196,6 +202,62 @@ final class AssistantController {
         }
     }
 
+    // MARK: - Reply as speech
+
+    /// The hub answers as *fala*: when the task carries `reply_audio_url`, download
+    /// the synthesised bytes and let the mouth follow the real voice level (~30 Hz).
+    /// Without audio, the T-800 speaks with the synthetic cadence (`level: -1`).
+    private func startReplySpeech(taskID: String, replyAudioURL: String?) {
+        stopReplyPlayback()
+        guard let replyAudioURL, !replyAudioURL.isEmpty else {
+            phase = .answering(reply: lastReply, level: -1)
+            return
+        }
+        // While the bytes come in, the synthetic cadence keeps the face alive.
+        phase = .answering(reply: lastReply, level: -1)
+        replyAudioTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let data = try await self.client.replyAudio(taskID: taskID)
+                guard !Task.isCancelled else { return }
+                self.playReplyAudio(data)
+            } catch {
+                // No speech to play: fall back to the synthetic cadence.
+                self.phase = .answering(reply: self.lastReply, level: -1)
+            }
+        }
+    }
+
+    private func playReplyAudio(_ data: Data) {
+        // The metering task inside `ReplyPlayer` drives these at ~30 Hz.
+        replyPlayer.onLevel = { [weak self] level in
+            Task { @MainActor [weak self] in
+                guard let self, case .answering(let reply, _) = self.phase else { return }
+                self.phase = .answering(reply: reply, level: level)
+            }
+        }
+        replyPlayer.onFinish = { [weak self] in
+            Task { @MainActor [weak self] in
+                // Keep the answer on screen with the mouth closed (level 0);
+                // the full text still opens on tap.
+                guard let self, case .answering(let reply, _) = self.phase else { return }
+                self.phase = .answering(reply: reply, level: 0)
+            }
+        }
+        do {
+            try replyPlayer.play(data)
+        } catch {
+            phase = .answering(reply: lastReply, level: -1)
+        }
+    }
+
+    /// Silence the reply audio: cancel the download and stop playback (no `onFinish`).
+    private func stopReplyPlayback() {
+        replyAudioTask?.cancel()
+        replyAudioTask = nil
+        replyPlayer.stop()
+    }
+
     // MARK: - Applying results
 
     func apply(_ status: TaskStatus) {
@@ -207,10 +269,10 @@ final class AssistantController {
             lastReply = status.aiReply ?? status.transcript ?? ""
             lastLatencyMilliseconds = status.totalMilliseconds
             usedBackend = status.backend
-            phase = .answering(reply: lastReply)
             activeTaskID = nil
             WKInterfaceDevice.current().play(.success)
             RuntimeCoordinator.shared.stopExtendedRuntime()
+            startReplySpeech(taskID: status.taskID, replyAudioURL: status.replyAudioURL)
             let coordinator = RuntimeCoordinator.shared
             Task {
                 #if DEBUG
@@ -254,6 +316,10 @@ final class AssistantController {
     /// in a state for design review, or prove the TOTP contract against the live hub.
     func applyDemoPhase(_ raw: String) {
         switch raw {
+        case "capture":
+            // Captação em silêncio: a waveform fica AZUL (o microfone ouve,
+            // ninguém fala) — o estado para fotografar o azul.
+            phase = .listening(power: 0.05)
         case "listening":
             phase = .listening(power: 0.72)
         case "waiting":
@@ -262,7 +328,8 @@ final class AssistantController {
             lastLatencyMilliseconds = 8_400
             usedBackend = "wtx-transcribe"
             lastReply = "Lembrete criado para amanhã às 09:00 e o calendário do Mac já está atualizado."
-            phase = .answering(reply: lastReply)
+            // Sem áudio real: cadência sintética (`level: -1`) para os screenshots.
+            phase = .answering(reply: lastReply, level: -1)
         case "failed":
             phase = .failed(message: "Mac mini inacessível: ligação recusada")
         default:
@@ -293,7 +360,7 @@ final class AssistantController {
             let reasoning = payload["reasoning_effort"] as? String ?? "?"
             lastReply = "Ligado ao hub · \(model) · reasoning \(reasoning) · TOTP aceite"
             usedBackend = "hub"
-            phase = .answering(reply: lastReply)
+            phase = .answering(reply: lastReply, level: -1)
             WKInterfaceDevice.current().play(.success)
         } catch {
             phase = .failed(message: error.localizedDescription)
@@ -305,6 +372,7 @@ final class AssistantController {
     func resetSession() {
         pollingTask?.cancel()
         meteringTask?.cancel()
+        stopReplyPlayback()
         activeTaskID = nil
         phase = .idle
         lastReply = ""

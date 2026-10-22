@@ -8,6 +8,9 @@ struct TaskStatus: Codable, Equatable {
     let stepDescription: String
     let transcript: String?
     let aiReply: String?
+    /// Path of the synthesised speech of the answer (`GET /api/v1/assistant/reply/{id}`),
+    /// empty when the hub answered with text only.
+    let replyAudioURL: String?
     let backend: String?
     let model: String?
     let reasoningTokens: Int?
@@ -21,6 +24,7 @@ struct TaskStatus: Codable, Equatable {
         case stepDescription = "step_description"
         case transcript
         case aiReply = "ai_reply"
+        case replyAudioURL = "reply_audio_url"
         case backend
         case model
         case reasoningTokens = "reasoning_tokens"
@@ -46,7 +50,11 @@ enum AssistantPhase: Equatable {
     case listening(power: Double)
     case uploading
     case waiting(progress: Double, step: String)
-    case answering(reply: String)
+    /// The answer, as text plus the *real* speech level of its audio playback.
+    /// `level == -1` means "synthetic cadence" (no real audio — the fallback when the
+    /// hub answers with text only); `0…1` is the level measured while the reply audio
+    /// plays on the watch (`0` = silence / playback finished, mouth closed).
+    case answering(reply: String, level: Double)
     case failed(message: String)
 
     var isRecording: Bool {
@@ -69,7 +77,7 @@ enum AssistantPhase: Equatable {
         case .uploading: return "A enviar ao Mac mini…"
         case .waiting(let progress, let step):
             return progress > 0.02 ? "\(Int(progress * 100))% · \(step)" : step
-        case .answering(let reply): return reply
+        case .answering(let reply, _): return reply
         case .failed(let message): return message
         }
     }

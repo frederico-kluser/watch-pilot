@@ -15,7 +15,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import llm, notify, transcribe
+from . import llm, notify, transcribe, tts
 from .config import settings
 
 STARTED_AT = time.time()
@@ -36,6 +36,9 @@ class Task:
     backend: str = ""
     audio_path: str = ""
     audio_bytes: int = 0
+    tts_backend: str = ""
+    reply_audio_path: str = ""
+    reply_audio_bytes: int = 0
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
     timings_ms: dict[str, int] = field(default_factory=dict)
@@ -43,7 +46,12 @@ class Task:
     error: str = ""
 
     def to_json(self) -> dict[str, Any]:
-        return asdict(self)
+        payload = asdict(self)
+        # The watch never needs the filesystem path: it gets the public route.
+        payload["reply_audio_url"] = (
+            f"/api/v1/assistant/reply/{self.task_id}" if self.reply_audio_path else ""
+        )
+        return payload
 
 
 TASKS: dict[str, Task] = {}
@@ -118,6 +126,18 @@ async def run(task: Task) -> None:
                 f"{result.error or 'erro desconhecido'}."
             )
             task.error = result.error
+
+        _advance(task, 0.75, "A sintetizar a fala…")
+        if settings.tts_enabled and task.ai_reply.strip():
+            reply_dir = Path(settings.data_dir) / "replies"
+            reply_dir.mkdir(parents=True, exist_ok=True)
+            speech = await tts.synthesize(task.ai_reply, reply_dir / task.task_id)
+            task.timings_ms["tts"] = speech.elapsed_ms
+            task.attempts = [*task.attempts, *speech.attempts]
+            if speech.ok and speech.path is not None:
+                task.reply_audio_path = str(speech.path)
+                task.reply_audio_bytes = speech.bytes
+                task.tts_backend = speech.backend
 
         _advance(task, 0.85, "A guardar o resultado…")
         await notify.notify(

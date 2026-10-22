@@ -83,6 +83,15 @@ struct HubClient {
         return try await perform(request, body: nil)
     }
 
+    /// The answer as synthesised speech: raw m4a/mp3 bytes from
+    /// `GET /api/v1/assistant/reply/{task_id}` (same TOTP auth as every request).
+    func replyAudio(taskID: String) async throws -> Data {
+        var request = URLRequest(url: try base().appendingPathComponent("api/v1/assistant/reply/\(taskID)"))
+        request.httpMethod = "GET"
+        request.timeoutInterval = 60
+        return try await performRaw(request, body: nil)
+    }
+
     func notify(title: String, body: String, taskID: String = "") async throws {
         var request = URLRequest(url: try base().appendingPathComponent("api/v1/notify"))
         request.httpMethod = "POST"

@@ -29,12 +29,45 @@ from app import security  # noqa: E402
 from app.config import settings  # noqa: E402
 
 
+def run_sync(coro):
+    """Drive one coroutine from a sync test, always on a fresh event loop.
+
+    ``asyncio.get_event_loop()`` returns a *closed* loop once a previous test has
+    run (Python 3.13), so the loop is created and disposed here on purpose.
+    """
+    import asyncio
+
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
 @pytest.fixture()
 def fresh_guard(tmp_path, monkeypatch):
     """A replay guard with its own state file, so tests cannot leak counters."""
     guard = security.ReplayGuard(tmp_path / "auth-state.json")
     monkeypatch.setattr(security, "guard", guard)
     return guard
+
+
+@pytest.fixture()
+def stub_tts(monkeypatch):
+    """A deterministic synthesiser: one tiny 'audio' file, no network, no `say`."""
+    from app import tts
+
+    calls: list[str] = []
+
+    async def fake_synthesize(text: str, stem) -> tts.TtsResult:
+        calls.append(text)
+        path = stem.with_suffix(".m4a")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"\x00\x00\x00\x18ftypM4A fake speech")
+        return tts.TtsResult(path=path, backend="stub", elapsed_ms=3, bytes=path.stat().st_size)
+
+    monkeypatch.setattr(tts, "synthesize", fake_synthesize)
+    return calls
 
 
 @pytest.fixture()
