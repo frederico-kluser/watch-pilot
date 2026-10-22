@@ -22,8 +22,8 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 topBar
                 Spacer(minLength: 0)
-                statusBlock
             }
+            .allowsHitTesting(false)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         // Full-bleed, como o visor da referência: o "T-800" partilha a linha do
@@ -86,7 +86,7 @@ struct ContentView: View {
             GeometryReader { geo in
                 AssistantAvatar(phase: controller.phase, isReduceMotion: reduceMotion)
                     .frame(width: 190, height: 231)
-                    .scaleEffect(geo.size.width / 190)
+                    .scaleEffect(max(geo.size.width / 190, geo.size.height / 231))
                     .frame(width: geo.size.width, height: geo.size.height)
                     .contentShape(Rectangle())
             }
@@ -104,99 +104,6 @@ struct ContentView: View {
         case .answering: return "Abrir a resposta completa"
         case .failed: return "Tentar de novo"
         case .idle: return "Gravar comando de voz"
-        }
-    }
-
-    // MARK: - Copy
-
-    /// A legenda do visor, por cima do scrim escuro no fim do canvas. A resposta
-    /// do hub pode crescer (scroll) sem nunca empurrar nada do sítio.
-    private var statusBlock: some View {
-        ScrollView {
-            VStack(spacing: 1) {
-                Text(controller.phase.headline)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-                    .foregroundStyle(headlineColor)
-                    .textCase(isShortStatus ? .uppercase : nil)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(isShortStatus ? 1 : 4)
-                    .minimumScaleFactor(0.85)
-                    .fixedSize(horizontal: false, vertical: true)
-
-                if let spoken = transcriptLine {
-                    Text(spoken)
-                        .font(.system(size: 8.5, design: .rounded))
-                        .foregroundStyle(Palette.muted)
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Text(footnote)
-                    .font(.system(size: 8.5, design: .rounded))
-                    .foregroundStyle(Palette.muted.opacity(0.85))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 1)
-        }
-        .scrollIndicators(.hidden)
-        .frame(maxHeight: isShortStatus ? 42 : 62)
-        .padding(.bottom, 4)
-        .animation(.easeInOut(duration: 0.2), value: controller.phase)
-    }
-
-    /// What the hub heard — shown as soon as it exists, so a bad transcription is
-    /// visible instead of quietly becoming a confident wrong answer.
-    private var transcriptLine: String? {
-        let transcript = controller.lastTranscript
-        guard !transcript.isEmpty else { return nil }
-        switch controller.phase {
-        case .waiting, .answering:
-            return "Ouvi: “\(transcript)”"
-        default:
-            return nil
-        }
-    }
-
-    private var footnote: String {
-        switch controller.phase {
-        case .answering:
-            if let latency = controller.lastLatencyMilliseconds {
-                let backend = controller.usedBackend ?? "hub"
-                let duration = latency >= 1000
-                    ? String(format: "%.1f s", Double(latency) / 1000)
-                    : "\(latency) ms"
-                return "\(backend) · \(duration)"
-            }
-            return "Resposta do Mac mini"
-        case .failed:
-            return controller.hasPendingTask
-                ? "O comando pode ter continuado no Mac"
-                : "Toca para tentar de novo"
-        default:
-            return controller.phase.hint
-        }
-    }
-
-    /// A resposta do hub é texto corrido; os estados curtos leem-se como o visor:
-    /// em maiúsculas, tipo terminal.
-    private var isShortStatus: Bool {
-        if case .answering = controller.phase { return false }
-        return true
-    }
-
-    private var headlineColor: Color {
-        switch controller.phase {
-        case .idle: return Palette.ink
-        case .listening: return Palette.crimson
-        case .uploading: return Palette.amber
-        case .waiting: return Palette.muted
-        case .answering: return Palette.ink
-        case .failed: return Palette.crimson
         }
     }
 

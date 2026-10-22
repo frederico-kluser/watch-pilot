@@ -6,37 +6,41 @@ what it is doing in under a second, and does it ever lie to me".
 
 ## Shape
 
-The screen **is** the visor of a Cyberdyne T-800 — full-bleed, no chrome of our own:
+The screen **is** the visor of a Cyberdyne T-800 — full-bleed, no chrome of our own
+and **no text**: everything the visor has to say is carried by colour, motion and
+sound.
 
 ```
 ┌────────────────────────┐
 │ T-800           10:09  │   model on the system clock's row
-│ ┌────────────────────┐ │
-│ │ ▲ CYBERDYNE SYSTEMS│ │   targeting frame
-│ │ ┌ ⌜      ⌐ ┐ ┤ticks│ │   corner brackets · ruler ticks + scanner
-│ │ │  ( T-800 ) │     │ │   reticle ring + the skull (overflows it)
-│ │ └ ⌞      ⌟ ┘ ┤ticks│ │   red crosshairs · data glyphs
-│ └────────────────────┘ │
-│ ░░▒▒████▒▒░░▒▒██▒▒░░     │   dot-matrix waveform (the mic / the voice)
-│ COMO POSSO AJUDAR?     │   headline
-│ hint · provenance      │   tiny footnote over a dark scrim
+│╭──────────────────────╮│   targeting frame, edge to edge
+││▲ CYBERDYNE   ⌐ ┤ticks││   corner brackets · ruler ticks + scanner
+│││  ( T-800 )      │   ││   reticle ring + the skull (overflows it)
+││╰ ⌞      ⌟ ┘ ┤ticks   ││   red crosshairs · data glyphs
+│╰──────────────────────╯│
+│ ░░▒▒████▒▒░░▒▒██████▒▒  │   dot-matrix waveform (the mic / the voice)
 └────────────────────────┘
 ```
 
 The HUD itself is the only button: a tap performs the state's action (record →
-send → cancel → open the answer). The copy scrolls inside its bottom slice over a
-scrim drawn by the canvas, so a long answer never pushes anything off the screen.
+send → cancel). The visor is drawn in a 190×231 pt space that is scaled to **cover**
+the screen (`max(w/190, h/231)`), so there is no letterboxing margin on any watch.
 
-## State → colour → copy
+There used to be a caption under the waveform (headline, transcript, provenance).
+It is gone by design: the answer arrives as **audio**, and the visor answers with
+its eyes and its jaw. The full text is still reachable — tapping while the T-800
+answers opens the answer sheet — but nothing is printed on the visor.
 
-| State | Pose | Headline | Tap does |
+## State → colour → face
+
+| State | Pose | Face | Tap does |
 | --- | --- | --- | --- |
-| idle | ember eyes, slow head scan, calm waveform | "COMO POSSO AJUDAR?" | starts recording |
-| listening | wide bright eyes, brackets pulse, waveform is the mic power | "A OUVIR…" | sends |
-| uploading | gaze up, scanline sweeps the ring | "A ENVIAR AO MAC MINI…" | cancels |
-| waiting | searching scan, progress arc on the ring | "62% · A PENSAR COM O MIMO 2.6 PRO…" | cancels |
-| answering | jaw talks, waveform speaks, eyes at full glow | the answer itself | opens the full answer |
-| failed | dimmed chrome, right eye flickers out, HUD glitches | the error, in words | retries / records again |
+| idle | ember eyes, slow head scan, calm waveform | calm, waiting | starts recording |
+| listening | wide bright eyes, brackets pulse, waveform is the mic power | dilated, leaning in | sends |
+| uploading | gaze up, scanline sweeps the ring | looking up | cancels |
+| waiting | searching scan, progress arc on the ring | scanning for a target | cancels |
+| answering | jaw talks, waveform speaks, eyes at full glow | talking, full glow | opens the read sheet |
+| failed | dimmed chrome, right eye flickers out, HUD glitches | torn, jaw slack | retries / records again |
 
 ## Principles applied (and where the audit pushed back)
 
@@ -47,8 +51,8 @@ A full audit against 195 research-backed principles is in
 were fixed:
 
 1. **Critical — the answer had no route to its full text.** It was being shrunk to
-   ~9.4 pt and ellipsised. Now the summary band scrolls and *Ver tudo* opens the
-   complete answer with its transcript and timings.
+   ~9.4 pt and ellipsised. The visor now speaks; the full text lives behind a tap
+   while the T-800 answers, with its transcript and timings.
 2. **Retry did not retry.** "Tentar de novo" called `resetSession()`, throwing the task
    away. Now, if a task is still pending, the button says *Ver estado* and re-polls;
    only a command with nothing pending starts a new recording.
@@ -130,8 +134,5 @@ Rendered from the simulator with `scripts/screenshot-states.sh`:
 | ![idle](design/screenshots/01-idle.png) | ![listening](design/screenshots/02-listening.png) | ![thinking](design/screenshots/03-thinking.png) |
 | ![answer](design/screenshots/04-answer.png) | ![error](design/screenshots/05-error.png) | ![hub](design/screenshots/06-live-hub.png) |
 
-`07-real-progress.png` é diferente das restantes: o app foi lançado com
-`-WPAttachTask <id>` e está a seguir uma tarefa **real** no hub (o texto "Ouvi: …"
-é a transcrição verdadeira e os 45 % são o estado verdadeiro da tarefa). As imagens
-01–05 usam `-WPDemoPhase <estado>` para congelar o orbe num estado; a 06 é a prova de
-ligação por TOTP dentro do watchOS.
+Todas as imagens usam `-WPDemoPhase <estado>` para congelar o visor num estado;
+a 06 é a prova de ligação ao hub por TOTP dentro do watchOS.

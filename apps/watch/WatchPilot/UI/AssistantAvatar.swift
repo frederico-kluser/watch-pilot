@@ -188,7 +188,6 @@ enum AvatarRenderer {
             drawScanLine(in: &context, center: skullCenter, radius: ringRadius, time: time, pose: pose)
         }
         drawWaveform(in: &context, size: size, time: time, pose: pose)
-        drawScrim(in: &context, size: size)
     }
 
     // MARK: fundo e brilho
@@ -204,18 +203,6 @@ enum AvatarRenderer {
         )
     }
 
-    /// Scrim escuro na faixa do texto de estado, para a legenda ler-se sempre.
-    private static func drawScrim(in context: inout GraphicsContext, size: CGSize) {
-        context.fill(
-            Path(CGRect(x: 0, y: size.height * 0.76, width: size.width, height: size.height * 0.24)),
-            with: .linearGradient(
-                Gradient(colors: [.clear, Palette.background.opacity(0.85), Palette.background]),
-                startPoint: CGPoint(x: 0, y: size.height * 0.76),
-                endPoint: CGPoint(x: 0, y: size.height)
-            )
-        )
-    }
-
     // MARK: moldura HUD
 
     private static func drawHUDFrame(in context: inout GraphicsContext, size: CGSize, ringRadius: Double, skullCenter: CGPoint, time: TimeInterval, pose: AvatarPose, glitch: Double) {
@@ -224,34 +211,34 @@ enum AvatarRenderer {
         let flick = pose.hudGlitch && glitch > 0.72
 
         // Moldura exterior — o rectângulo arredondado do visor.
-        let frame = CGRect(x: w * 0.06, y: h * 0.15, width: w * 0.88, height: h * 0.535)
+        let frame = CGRect(x: w * 0.015, y: h * 0.105, width: w * 0.97, height: h * 0.655)
         context.stroke(
-            Path(roundedRect: frame, cornerRadius: 14),
+            Path(roundedRect: frame, cornerRadius: w * 0.105),
             with: .color(Palette.muted.opacity(flick ? 0.15 : 0.4)),
             style: StrokeStyle(lineWidth: 1)
         )
 
         // Cantos da mira (brackets vermelhos) à volta do anel.
-        let bracketRect = CGRect(x: w * 0.215, y: h * 0.21, width: w * 0.57, height: h * 0.43)
+        let bracketRect = CGRect(x: w * 0.16, y: h * 0.155, width: w * 0.68, height: h * 0.52)
         let pulse = pose.hudPulse ? 0.6 + 0.4 * (0.5 + 0.5 * sin(time * 3.1)) : 0.9
         let jx = flick ? (glitch - 0.86) * 16 : 0
         drawBrackets(in: &context, rect: bracketRect.offsetBy(dx: jx, dy: 0), arm: 11,
                      color: accent.opacity(flick ? 0.35 : pulse))
 
         // Réguas de ticks laterais + marcas de varredura.
-        drawTickColumn(in: &context, x: w * 0.075, top: h * 0.28, bottom: h * 0.58, flip: false,
+        drawTickColumn(in: &context, x: w * 0.030, top: h * 0.19, bottom: h * 0.735, flip: false,
                        time: time, accent: accent, speed: 5.5)
-        drawTickColumn(in: &context, x: w * 0.925, top: h * 0.28, bottom: h * 0.58, flip: true,
+        drawTickColumn(in: &context, x: w * 0.970, top: h * 0.19, bottom: h * 0.735, flip: true,
                        time: time, accent: accent, speed: 4.1)
 
         // Segmento vermelho fixo na régua esquerda (como no visor de referência).
         context.fill(
-            Path(CGRect(x: w * 0.075 + 5.5, y: h * 0.435, width: 3.2, height: h * 0.055)),
+            Path(CGRect(x: w * 0.030 + 5.5, y: h * 0.520, width: 3.2, height: h * 0.075)),
             with: .color(accent.opacity(0.9))
         )
 
         // Logo Cyberdyne: triângulo vermelho vazado + duas linhas de texto.
-        drawCyberdyneLogo(in: &context, origin: CGPoint(x: w * 0.105, y: h * 0.165), accent: accent)
+        drawCyberdyneLogo(in: &context, origin: CGPoint(x: w * 0.062, y: h * 0.150), accent: accent)
 
         // Glifos de dados — decoração de terminal, sem significado.
         drawGlyphs(in: &context, size: size, accent: accent, dim: flick)
@@ -482,11 +469,11 @@ enum AvatarRenderer {
     // MARK: waveform de pontos
 
     private static func drawWaveform(in context: inout GraphicsContext, size: CGSize, time: TimeInterval, pose: AvatarPose) {
-        let bars = 35
-        let left = size.width * 0.12, right = size.width * 0.88
+        let bars = 42
+        let left = size.width * 0.045, right = size.width * 0.955
         let pitch = (right - left) / Double(bars - 1)
-        let centerY = size.height * 0.745
-        let maxHalf = size.height * 0.055
+        let centerY = size.height * 0.890
+        let maxHalf = size.height * 0.090
         let dot = 2.2, step = 2.6
 
         var dots = Path()
