@@ -29,6 +29,11 @@ final class VoiceRecorder: NSObject, AVAudioRecorderDelegate {
 
     private var observers: [NSObjectProtocol] = []
 
+    /// `AVAudioSessionDidBecomeInactiveNotification` (watchOS 27+), by value.
+    private static let sessionDidBecomeInactive = Notification.Name(
+        "AVAudioSessionDidBecomeInactiveNotification"
+    )
+
     var isRecording: Bool { recorder?.isRecording ?? false }
 
     /// Start a new recording, replacing any previous take.
@@ -120,17 +125,19 @@ final class VoiceRecorder: NSObject, AVAudioRecorderDelegate {
         guard observers.isEmpty else { return }
         let center = NotificationCenter.default
 
-        if #available(watchOS 27.0, *) {
-            observers.append(
-                center.addObserver(
-                    forName: AVAudioSession.didBecomeInactiveNotification,
-                    object: nil,
-                    queue: .main
-                ) { [weak self] _ in
-                    self?.captureWasInterrupted()
-                }
-            )
-        }
+        // Observed by name on purpose: the `AVAudioSession.didBecomeInactiveNotification`
+        // symbol only exists in the watchOS 27 SDK, and this project also builds with
+        // Xcode 26 (watchOS 26.5). The C constant's value is the string below, so this
+        // compiles everywhere and still receives the notification on watchOS 27.
+        observers.append(
+            center.addObserver(
+                forName: Self.sessionDidBecomeInactive,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.captureWasInterrupted()
+            }
+        )
 
         // Delivered on every watchOS this app supports. Deprecated in 27 in favour of
         // the notification above, but still the only one older systems emit.
