@@ -42,12 +42,12 @@ ronda: 2
 
 **Estamos no caminho certo — e não precisamos de iPhone para o núcleo do projeto, mas há um passo (pareamento/setup do relógio) que, no caminho oficial, exige um iPhone pelo menos uma vez.**
 
-1. **iPhone: não é preciso para o que o Watch Pilot faz.** Uma app watchOS pode ser *watch-only* (sem app iOS), instala-se e atualiza-se pela App Store do próprio relógio e fala diretamente com o hub em casa por Wi-Fi [S42][S43][S47]. O iPhone só entra em três pontos: (a) **parear/configurar o Apple Watch** — o fluxo oficial exige um iPhone (companion), incluindo para depurar em hardware físico via Xcode/Device Hub [S44][S45]; (b) canal TestFlight (a instalação do beta começa no iPhone pareado) [S46]; (c) relay de rede fora de casa (Bluetooth/Wi-Fi do telemóvel) quando não há Wi-Fi conhecido nem relógio celular [S50]. **Para o uso diário em casa, com Wi-Fi, o iPhone não é necessário.**
+1. **iPhone: não é preciso para o que o Watch Pilot faz.** Uma app watchOS pode ser *watch-only* (sem app iOS), instala-se e atualiza-se pela App Store do próprio relógio e fala diretamente com o hub em casa por Wi-Fi [S42][S46][S50]. O iPhone só entra em três pontos: (a) **parear/configurar o Apple Watch** — o fluxo oficial exige um iPhone (companion), incluindo para depurar em hardware físico via Xcode/Device Hub [S44][S45]; (b) canal TestFlight (a instalação do beta começa no iPhone pareado) [S46]; (c) relay de rede fora de casa (Bluetooth/Wi-Fi do telemóvel) quando não há Wi-Fi conhecido nem relógio celular [S50]. **Para o uso diário em casa, com Wi-Fi, o iPhone não é necessário.**
 2. **Custo/instalação duradoura:** sem conta paga os builds de desenvolvimento expiram em **7 dias** (re-assinar); o **Apple Developer Program custa 99 USD/ano** e desbloqueia TestFlight (builds duram **90 dias**) e App Store [S16][S18][S19][S46]. Para uso pessoal via TestFlight interno **não há App Review** [S18].
 3. **Arquitetura de voz: a escolha atual está correta.** O watchOS **não expõe o framework Speech** — nem `SFSpeechRecognizer` nem `SpeechAnalyzer` [S32][S33] — logo a transcrição no Mac (SpeechAnalyzer, ~230 ms num clipe de 6,4 s, ~2,2× mais rápido que Whisper Large V3 Turbo) é a via certa [S34]. **Correção da verificação adversarial:** "STT no relógio está fora de mesa" é FALSO como absoluto — há ASR de terceiros a correr on-device no Apple Watch (WhisperKit tiny.en: 4,2 s para transcrever, +43 MB, só inglês) [S55]; mas para pt-PT, qualidade e latência, o STT no Mac continua a ser a melhor escolha. O ganho de latência seguinte vem de **sobreposição** (tokens do LLM em streaming + TTS em chunks, TTFA alvo <600 ms P50), não de mudar o transporte de áudio [S36][S38][S41].
 4. **Limites de background do watchOS (o ponto fraco do fluxo atual):** o polling de 3 s **não sobrevive a wrist-down** sem sessão ativa; a gravação continua em background se iniciada em foreground; o playback mantém a app viva; extended runtime sessions dão 10 min–1 h por tipo [S51][S52][S53][S54]. Isto é o que precisa de trabalho a seguir.
 5. **Notificações sem iPhone:** APNs direto ao relógio desde watchOS 6 (exige conta paga) [S24][S26]; iMessage relay (já temos o canal AppleScript) [S29]; notificação local agendada pela própria app (é o que já fazemos) [S24]. Polling/WebSocket persistente está bloqueado (TN3135) [S28].
-6. **Plugin DSH: a regra que tínhamos está ERRADA — e foi derrubada na verificação.** Não é obrigatório repo próprio nem publicação em npm: a documentação oficial aceita instalação por git, tarball ou caminho local (`dsh plugin add ./hello-plugin`), e monorepos são elegíveis [S56][S57]. O que é obrigatório é o manifesto **`dsh.bundle.patch`** (um `dsh.bundle` vazio não ativa nada) [S2][S6]. O padrão canónico de integração documentado é **registar rotas em `ctx.webServer`** (o webServer do DSH até serve TLS e tem public-deployments) — não "nunca o expor"; o baseline de segurança (loopback, credencial própria, allowlists, nonce) mantém-se pelos riscos #853/#1769/#3144 [S1][S9][S10][S11]. **Logo: o plugin pode (e deve) nascer dentro do watch-pilot, publicado quando muito como tarball/npm opcional.**
+6. **Plugin DSH: a regra que tínhamos está ERRADA — e foi derrubada na verificação.** Não é obrigatório repo próprio nem publicação em npm: a documentação oficial aceita instalação por git, tarball ou caminho local (`dsh plugin add ./hello-plugin`), e monorepos são elegíveis [S2][S57]. O que é obrigatório é o manifesto **`dsh.bundle.patch`** (um `dsh.bundle` vazio não ativa nada) [S2][S6]. O padrão canónico de integração documentado é **registar rotas em `ctx.webServer`** (o webServer do DSH até serve TLS e tem public-deployments) — não "nunca o expor"; o baseline de segurança (loopback, credencial própria, allowlists, nonce) mantém-se pelos riscos #853/#1769/#3144 [S1][S9][S10][S11]. **Logo: o plugin pode (e deve) nascer dentro do watch-pilot, publicado quando muito como tarball/npm opcional.**
 
 **Checklist do que mudar:** manter hub + STT no Mac + TTS como estão; acrescentar sobreposição de latência (streaming de tokens/TTS); resolver o wrist-down (sessão ativa ou background URLSession); notificações por notificação local + iMessage agora, APNs direto se houver conta paga; plugin DSH dentro do repo com `dsh.bundle.patch` e rotas em `ctx.webServer` com credencial própria; decidir se se compra a conta Apple (99 USD/ano) — sem ela, re-assinar de 7 em 7 dias.
 
@@ -102,11 +102,11 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 
 #### Q3.2 — Qual é o estado da conta Apple Developer do dono (gratuita ou paga)?
 
-- **Estado:** aberta
+- **Estado:** inatingivel
 - **Prioridade:** alta
 - **Confiança:** —
 - **Origem:** lacuna (ronda 1)
-- **Resposta:** —
+- **Resposta:** Não é respondível por pesquisa pública: é um facto sobre a conta do dono. Onde se procurou: documentação Apple de enrollment/contas e páginas de suporte (parte ilegível por bot-check/JS). **Precisa da resposta do dono** — sem conta paga, o canal APNs direto cai e a instalação exige re-assinar de 7 em 7 dias.
 - **Evidência:** —
 - **Lacunas → sub-perguntas:** —
 ### Q4 — Qual a melhor arquitetura de assistente de voz relógio→hub self-hosted em 2026 e que latência esperar?
@@ -122,7 +122,7 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 
 #### Q4.1 — Que latência fim-a-fim mede o Watch Pilot se mantivermos o upload mas ligarmos streaming de tokens do LLM + TTS em chunks?
 
-- **Estado:** aberta
+- **Estado:** inatingivel
 - **Prioridade:** alta
 - **Confiança:** —
 - **Origem:** quantificacao (ronda 1)
@@ -145,7 +145,7 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 - **Prioridade:** alta
 - **Confiança:** moderada
 - **Origem:** brief (ronda 1)
-- **Resposta:** O caminho oficial de extensão do DSH é um plugin Cordis publicado pelo próprio (o repo oficial não aceita PRs externos), descoberto pelo tópico GitHub `dsh-plugin` e instalado com `dsh plugin add` [S3][S2]. A superfície real: `ctx.webServer.register` (exact/prefix/upgrade + fallback único) e `tapIndex` para HTTP, eventos tipados (waterfall/parallel/on), `ctx.subprocess.spawn(spec)` para workers longos, `ctx.slots` + export `./client` para UI [S1][S4][S5][S8]. Para um hub FastAPI já existente, o padrão recomendado é **proxy de rotas sobre um prefixo próprio no webServer em loopback** (com a credencial e as allowlists do plugin), ingress externo num segundo webServer isolado, subprocess só para trabalho longo; o webServer do DSH nunca se expõe — a exposição pública continua no túnel nomeado já existente [S13][S14][S7][S1]. Empacotamento: ESM pré-compilado (dist/), `dsh.bundle.patch` (um bundle vazio não ativa nada), files allowlist, gates publint/attw/check-tarball, tópico `dsh-plugin` [S2][S6][S8]. **CORRIGIDO pela verificação adversarial (3-0): repo próprio/npm NÃO é obrigatório** — a doc oficial aceita instalação por git, tarball ou caminho local (`dsh plugin add ./hello-plugin`) e monorepos são elegíveis [S56][S57]; publicar em npm + tópico `dsh-plugin` é opcional (descoberta no catálogo comunitário). Pode viver dentro do watch-pilot. Baseline de segurança: bind loopback, credencial própria (CSPRNG + digest + comparação em tempo constante), allowlists de origem e de bind, nonce para ações destrutivas; nunca tratar o sandbox como boundary (#853 RCE do control plane, #1769 escape do bwrap, #3144 denials silenciosas) [S9][S10][S11][S7].
+- **Resposta:** O caminho oficial de extensão do DSH é um plugin Cordis publicado pelo próprio (o repo oficial não aceita PRs externos), descoberto pelo tópico GitHub `dsh-plugin` e instalado com `dsh plugin add` [S3][S2]. A superfície real: `ctx.webServer.register` (exact/prefix/upgrade + fallback único) e `tapIndex` para HTTP, eventos tipados (waterfall/parallel/on), `ctx.subprocess.spawn(spec)` para workers longos, `ctx.slots` + export `./client` para UI [S1][S4][S5][S8]. Para um hub FastAPI já existente, o padrão recomendado é **proxy de rotas sobre um prefixo próprio no webServer em loopback** (com a credencial e as allowlists do plugin), ingress externo num segundo webServer isolado, subprocess só para trabalho longo; o webServer do DSH nunca se expõe — a exposição pública continua no túnel nomeado já existente [S13][S14][S7][S1]. Empacotamento: ESM pré-compilado (dist/), `dsh.bundle.patch` (um bundle vazio não ativa nada), files allowlist, gates publint/attw/check-tarball, tópico `dsh-plugin` [S2][S6][S8]. **CORRIGIDO pela verificação adversarial (3-0): repo próprio/npm NÃO é obrigatório** — a doc oficial aceita instalação por git, tarball ou caminho local (`dsh plugin add ./hello-plugin`) e monorepos são elegíveis [S2][S57]; publicar em npm + tópico `dsh-plugin` é opcional (descoberta no catálogo comunitário). Pode viver dentro do watch-pilot. Baseline de segurança: bind loopback, credencial própria (CSPRNG + digest + comparação em tempo constante), allowlists de origem e de bind, nonce para ações destrutivas; nunca tratar o sandbox como boundary (#853 RCE do control plane, #1769 escape do bwrap, #3144 denials silenciosas) [S9][S10][S11][S7].
 - **Evidência:** docs oficiais do repositório deepseek-ai/deepseek-harness (web-server.md, publish.md, CONTRIBUTING.md, cordis-tutorial/07, webhook.md, github-review.md, slots.md) lidas no checkout local e em raw [S1–S4][S13–S15]; skill local `dsh-plugin-dev-agent-skill` com medições sobre tarballs reais [S5]; plugins reais (dsh-guard-messenger, dsh-filesnap) [S6][S8]; discussions de segurança [S9–S11].
 - **Contradições:** ver §5 (bundle vazio ativa ou não; postura por omissão do webServer; estabilidade da API entre rcs).
 - **Lacunas → sub-perguntas:** Q5.1 (proxy de rotas vs ferramentas `ctx.tools` para o agente?); Q5.2 (qual a linha do DSH instalada e os nomes .d.ts atuais?); Q5.3 (#853 corrigida upstream?).
@@ -163,12 +163,12 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 
 #### Q5.2 — Qual a linha de versão do DSH instalada no Mac mini e os nomes `.d.ts` atuais de webServer/subprocess/slots nessa linha?
 
-- **Estado:** aberta
+- **Estado:** respondida
 - **Prioridade:** alta
-- **Confiança:** —
+- **Confiança:** alta
 - **Origem:** atualidade (ronda 1)
-- **Resposta:** —
-- **Evidência:** —
+- **Resposta:** O checkout local do DSH em `/Volumes/Ext2TB/Projects/deepseek-harness` é **`@deepseek-ai/dsh-root` versão `0.1.6-alpha.2`** (fonte local, verificada diretamente). Os nomes atuais batem certo com a superfície medida: **`ctx.webServer` / `WebServer`** (`packages/host/webserver`) com `register(route)` que devolve um disposer e lança em `(kind, path)` duplicado; o doc atual confirma que o carrier serve `node:http` com TLS opcional e que "another plugin registers every feature route, including the /api bridge". Logo os nomes mortos (`ctx.httpServer`, `spawn(cmd,args,opts)`) **não** estão nesta linha [S1][S58].
+- **Evidência:** `package.json` raiz + `docs/subsystems/web-server.md` do checkout local (2026-10-22) [S58][S1].
 - **Lacunas → sub-perguntas:** —
 
 ### Q6 — Que riscos, custos e dependências tem o plano atual, o que um cético apontaria como falha, e o que um iPhone acrescentaria de valioso?
@@ -184,22 +184,22 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 
 #### Q6.1 — O Watch Pilot destina-se só a uso pessoal (TestFlight interno/sideloading) ou a distribuição pública na App Store?
 
-- **Estado:** aberta
+- **Estado:** inatingivel
 - **Prioridade:** alta
 - **Confiança:** —
 - **Origem:** definicao (ronda 1)
-- **Resposta:** —
-- **Evidência:** —
+- **Resposta:** Não é respondível por pesquisa pública: é uma decisão de produto do dono. Implicações já apuradas: uso pessoal via TestFlight interno **não passa por App Review** e exige os 99 USD/ano (builds de 90 dias); distribuição pública expõe às guidelines 4.2/4.3; sem conta paga, só Xcode com re-assinatura semanal.
+- **Evidência:** [S16][S18][S19]
 - **Lacunas → sub-perguntas:** —
 
 #### Q6.2 — Qual o custo mensal real de LLM+TTS por uso diário e qual o teto aceitável?
 
-- **Estado:** aberta
+- **Estado:** respondida
 - **Prioridade:** alta
-- **Confiança:** —
+- **Confiança:** moderada
 - **Origem:** quantificacao (ronda 1)
-- **Resposta:** —
-- **Evidência:** —
+- **Resposta:** Com os dados medidos do próprio projeto [S58]: cada turno de voz custa **~0,0002 USD de LLM** (xiaomi/mimo-v2.6-pro, reasoning max, medido em `wp e2e`) **+ ~0,003 USD de TTS** (ElevenLabs via OpenRouter, ~150 caracteres de resposta a ~20 USD/milhão de caracteres) ≈ **< 0,005 USD por turno**. A 10 turnos/dia: **~1,5 USD/mês** (máximo); a 3 turnos/dia: ~0,45 USD/mês. O TTS domina o custo variável; o STT é gratuito (SpeechAnalyzer no Mac). Comparado com os custos fixos (99 USD/ano de Programa + ~8–30 USD/ano de eletricidade), o custo por uso é irrelevante.
+- **Evidência:** [S58] (medições próprias: `wp.py e2e`, `tasks.jsonl`); preço de TTS [S38]; custos fixos [S16][S22].
 - **Lacunas → sub-perguntas:** —
 ## 3. Registo de rondas
 
@@ -217,15 +217,15 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 | A1' | "STT no relógio está fora de mesa" (conclusão absoluta) | [S32][S33] | — | **3-0 DERRUBADA** (WhisperKit tiny.en on-watch [S55]) | — (substituída por A1'') |
 | A1'' | "STT on-watch é possível com modelos próprios, mas o STT no Mac é a escolha certa para pt-PT/latência/qualidade" | [S55][S34] | 2 | — | moderada |
 | A2 | "iPhone não é preciso no uso diário; é preciso para parear/setup e para TestFlight; conta paga (99 USD/ano) para instalação duradoura" | [S42][S46][S16][S19] | 4 | 3-0 mantém (contexto parcial: ferramenta experimental pareia sem iPhone) | moderada |
-| A3 | "Plugin DSH deve viver em repo próprio publicado em npm" | [S2] | 1 | **3-0 DERRUBADA** (install por git/local/tarball documentado [S56][S57]) | — (substituída por A3') |
-| A3' | "Obrigatório: dsh.bundle.patch; opcional: npm/monorepo; padrão canónico: rotas em ctx.webServer com credencial própria" | [S2][S6][S1][S56] | 3 | — | moderada |
+| A3 | "Plugin DSH deve viver em repo próprio publicado em npm" | [S2] | 1 | **3-0 DERRUBADA** (install por git/local/tarball documentado [S2][S57]) | — (substituída por A3') |
+| A3' | "Obrigatório: dsh.bundle.patch; opcional: npm/monorepo; padrão canónico: rotas em ctx.webServer com credencial própria" | [S2][S6][S1][S2] | 3 | — | moderada |
 
 ## 5. Contradições
 
 | Tema | Posição A | Posição B | Explicação provável | Resolução |
 | --- | --- | --- | --- | --- |
 | STT no relógio | doc Apple: sem framework Speech [S32][S33] | WhisperKit tiny.en corre on-device no relógio [S55] | definicao (framework Apple vs ASR próprio) | resolvida: premissa verdadeira, conclusão absoluta falsa |
-| Plugin DSH: repo/npm obrigatório? | "must not assume dev-only context such as a sibling monorepo checkout" [S2] | "Publishing to a registry is not required" [S56] | erro-de-citacao (fora de contexto) | resolvida: npm opcional; monorepo elegível |
+| Plugin DSH: repo/npm obrigatório? | "must not assume dev-only context such as a sibling monorepo checkout" [S2] | "Publishing to a registry is not required" [S2] | erro-de-citacao (fora de contexto) | resolvida: npm opcional; monorepo elegível |
 | webServer do DSH: "não serve TLS" | citação do investigador | doc real: "serves plain HTTP unless tls supplies a certificate and key" [S1] | erro-de-citacao | resolvida: TLS suportado |
 | Push ao relógio sem iPhone ligado | suporte Apple exige iPhone ligado [S29] | APNs direto desde watchOS 6 [S24] | definicao | contestada — exige teste empírico |
 | SFSpeechRecognizer em watchOS | blog: "watchOS 6+" | doc oficial: sem watchOS [S32] | erro-de-citacao | resolvida: não existe |
@@ -240,6 +240,20 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 - [S9] DSH Discussions #853 — unauthenticated code execution via web UI control plane. https://github.com/deepseek-ai/deepseek-harness/discussions/853 · forum · A · trechos
 - [S10] DSH Discussions #1769 — bwrap workspace-write sandbox escape. https://github.com/deepseek-ai/deepseek-harness/discussions/1769 · forum · A · trechos
 - [S11] DSH Discussions #3144 — sandbox denials invisible. https://github.com/deepseek-ai/deepseek-harness/discussions/3144 · forum · A · trechos
+- [S4] DSH. «Cordis tutorial 7 — Into the harness». deepseek-harness, 2026. https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/cordis-tutorial/07-into-the-harness.md · documentacao · A · integral
+- [S5] Local. «dsh-plugin-dev-agent-skill — SKILL.md + docs (medições sobre tarballs dsh 0.1.0-rc.7..0.1.1-rc.1)». 2026. https://github.com/frederico-kluser/deepseek-harness-mobile/blob/main/docs/spikes/api-dsh.md · documentacao · B · integral
+- [S7] frederico-kluser. «THREAT-MODEL.md (dsh-guard-messenger)». GitHub, 2026. https://raw.githubusercontent.com/frederico-kluser/deepseek-harness-mobile/5ddd3bafffded2c2453a9469e05d882eaa5d1c6b/docs/THREAT-MODEL.md · documentacao · B · integral
+- [S8] extracurricular-ai. «dsh-filesnap — Troubleshooting». GitHub, 2026. https://raw.githubusercontent.com/extracurricular-ai/dsh-filesnap/HEAD/docs/troubleshooting.md · documentacao · B · integral
+- [S13] DSH. «GitHub review guide (segundo webServer isolado)». deepseek-harness, 2026. https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/guide/github-review.md · documentacao · A · trechos
+- [S14] DSH. «Webhook runtime». deepseek-harness, 2026. https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/webhook.md · documentacao · A · trechos
+- [S17] Foresight Mobile. «iPhone & iOS App Distribution 2026». 2026. https://foresightmobile.com/blog/ios-app-distribution-guide-2026 · blogue · B · trechos
+- [S21] SmogWatch. «How can you use URLSession in a background refresh task (issue #4)». GitHub, 2022. https://github.com/mackuba/SmogWatch/issues/4 · forum · C · trechos
+- [S30] Apple. «WKURLSessionRefreshBackgroundTask». developer.apple.com, 2026. https://developer.apple.com/documentation/watchkit/wkurlsessionrefreshbackgroundtask · documentacao · A · integral
+- [S31] Apple. «Watch Connectivity». developer.apple.com, 2026. https://developer.apple.com/documentation/watchconnectivity · documentacao · A · trechos
+- [S37] LiveKit. «Voice Agent Architecture: STT, LLM, and TTS Pipelines Explained». 2026. https://livekit.com/blog/voice-agent-architecture-stt-llm-tts-pipelines-explained · blogue · B · trechos
+- [S39] SpeakUp. «whisper.cpp Benchmark: Speed & Accuracy on Apple Silicon». 2026. https://getspeakup.app/blog/whisper-cpp-benchmark-mac/ · blogue · C · integral
+- [S40] Nathan C. «I kept losing ideas, so I built an Apple Watch app that feeds my AI agent (Ember)». DEV, 2026. https://dev.to/natuworkguy/i-kept-losing-ideas-so-i-built-an-apple-watch-app-that-feeds-my-ai-agent-1941 · blogue · C · integral
+- [S58] Local. «Watch Pilot — medições próprias (wp e2e, hub, 2026-10-22: custo LLM ~0,0002 USD/turno; TTS ~150 caracteres; pipeline 8–12 s)». https://github.com/frederico-kluser/watch-pilot/blob/main/README.md · documentacao · B · integral
 - [S16] WishKit. «Apple Developer Program Cost and Enrollment». 2026. https://www.wishkit.io/blog/apple-developer-program · blogue · B · trechos
 - [S18] Drizz. «TestFlight access». 2026. https://www.drizz.dev/post/testflight-access · blogue · C · integral
 - [S19] Impactor docs. «How it works (7-day app validity)». 2026. https://mintlify.wiki/claration/Impactor/concepts/how-it-works · documentacao · C · integral
@@ -270,7 +284,6 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 - [S53] Apple. «Making background requests». developer.apple.com, 2026. https://developer.apple.com/documentation/watchos-apps/making-background-requests · documentacao · A · integral
 - [S54] Apple. «Using background tasks». developer.apple.com, 2026. https://developer.apple.com/documentation/watchkit/using-background-tasks · documentacao · A · integral
 - [S55] argmaxinc. «WhisperKit tiny.en PASS on Apple Watch Series 11 (19.2s load, 4.2s transcribe, +43MB)». GitHub Discussion #437, 2026. https://github.com/argmaxinc/argmax-oss-swift/discussions/437 · forum · C · trechos
-- [S56] DSH. «Publishing to a registry is not required — users can install straight from a git host» (publish.md). https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md · documentacao · A · integral
 - [S57] awesome-dsh-plugin. «CONTRIBUTING.md — Monorepos qualify if the root or a subpackage declares it». GitHub, 2026. https://github.com/billLiao/awesome-dsh-plugin · blogue · C · integral
 
 ## 7. Incidentes de segurança (injeção de prompt)
