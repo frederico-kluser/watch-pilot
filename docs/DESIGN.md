@@ -6,36 +6,41 @@ what it is doing in under a second, and does it ever lie to me".
 
 ## Shape
 
-Three bands, fixed order, never re-arranged:
+The screen **is** the visor of a Cyberdyne T-800 — full-bleed, no chrome of our own
+and **no text**: everything the visor has to say is carried by colour, motion and
+sound.
 
 ```
-┌──────────────────────┐
-│      ╭──────╮        │   the character: state, colour, pose, motion
-│      │ ◉  ◉ │        │
-│                      │
-│   headline (1–4 ln)  │   what is happening, or the answer
-│   "Ouvi: …"          │   what the hub actually heard
-│   footnote           │   provenance: backend · duration
-│                      │
-│  ┌────────────────┐  │   one full-width action, label follows state
-│  │   Gravar voz   │  │
-│  └────────────────┘  │
-└──────────────────────┘
+┌────────────────────────┐
+│ T-800           10:09  │   model on the system clock's row
+│╭──────────────────────╮│   targeting frame, edge to edge
+││▲ CYBERDYNE   ⌐ ┤ticks││   corner brackets · ruler ticks + scanner
+│││  ( T-800 )      │   ││   reticle ring + the skull (overflows it)
+││╰ ⌞      ⌟ ┘ ┤ticks   ││   red crosshairs · data glyphs
+│╰──────────────────────╯│
+│ ░░▒▒████▒▒░░▒▒██████▒▒  │   dot-matrix waveform (the mic / the voice)
+└────────────────────────┘
 ```
 
-The character and the button never flex, so a long answer can never push the primary action
-off the screen; the copy band scrolls inside its slice instead of clipping.
+The HUD itself is the only button: a tap performs the state's action (record →
+send → cancel). The visor is drawn in a 190×231 pt space that is scaled to **cover**
+the screen (`max(w/190, h/231)`), so there is no letterboxing margin on any watch.
 
-## State → colour → copy
+There used to be a caption under the waveform (headline, transcript, provenance).
+It is gone by design: the answer arrives as **audio**, and the visor answers with
+its eyes and its jaw. The full text is still reachable — tapping while the T-800
+answers opens the answer sheet — but nothing is printed on the visor.
 
-| State | Pose | Headline | Action |
+## State → colour → face
+
+| State | Pose | Face | Tap does |
 | --- | --- | --- | --- |
-| idle | eyes open, slow breath + blink, antennae half | "Toca para falar" | Gravar voz |
-| listening | antennae up, mouth opens with mic power | "A ouvir…" | Enviar |
-| uploading | gazes up, arc waves, small mouth | "A enviar ao Mac mini…" | Cancelar |
-| waiting | eyes wander, head sways, thinking dots | "62% · A pensar com o MiMo 2.6 Pro…" | Cancelar |
-| answering | `^^` eyes, grin, bounce | the answer itself | Ver tudo |
-| failed | X eyes, frown, drooped antennae | the error, in words | Tentar de novo / Ver estado |
+| idle | ember eyes, slow head scan, calm waveform | calm, waiting | starts recording |
+| listening | wide bright eyes, brackets pulse, waveform is the mic power | dilated, leaning in | sends |
+| uploading | gaze up, scanline sweeps the ring | looking up | cancels |
+| waiting | searching scan, progress arc on the ring | scanning for a target | cancels |
+| answering | jaw talks, waveform speaks, eyes at full glow | talking, full glow | opens the read sheet |
+| failed | dimmed chrome, right eye flickers out, HUD glitches | torn, jaw slack | retries / records again |
 
 ## Principles applied (and where the audit pushed back)
 
@@ -46,8 +51,8 @@ A full audit against 195 research-backed principles is in
 were fixed:
 
 1. **Critical — the answer had no route to its full text.** It was being shrunk to
-   ~9.4 pt and ellipsised. Now the summary band scrolls and *Ver tudo* opens the
-   complete answer with its transcript and timings.
+   ~9.4 pt and ellipsised. The visor now speaks; the full text lives behind a tap
+   while the T-800 answers, with its transcript and timings.
 2. **Retry did not retry.** "Tentar de novo" called `resetSession()`, throwing the task
    away. Now, if a task is still pending, the button says *Ver estado* and re-polls;
    only a command with nothing pending starts a new recording.
@@ -76,28 +81,49 @@ python3 ~/Agent-Skills/watch-pilot-animation-agent-skill/scripts/anim-doctor.py 
 
 Animoji/Memoji cannot be rendered by third parties (private framework; no ARKit or
 RealityKit on watchOS — see [`research/Q8-memoji-animoji.md`](research/Q8-memoji-animoji.md)),
-so the avatar is a vector robot drawn with `Canvas`, and every state is a
-`AvatarPose` value (eye openness, gaze, mouth, antennae, tilt, glow, palette) rather
-than a branch in the drawing code.
+so the avatar is a **T-800 endoskeleton skull** — and it is not drawn by hand: it is
+**traced from the reference visor** (`design/reference/t800-visor.jpg`) so it matches
+the mockup to the pixel (MAE 5.2 inside the skull, 1.4 % of pixels off by more than
+45/255). The tracer (`scripts/design/trace-head.py`) emits 17 flat-metal layers plus
+the silhouette into `T800HeadArt.swift`; the renderer (`T800Head.swift`) paints them
+in *unit space* and animates:
 
-[`watchpilot-flow.gif`](design/watchpilot-flow.gif) is a real recording of the simulator
-running a live hub task: the character goes from thinking (eyes wandering, dots) to the
-answer (`^^` eyes, bounce) while the text changes.
+* **pupils** — procedural, so they glow, dilate, look around and flicker out;
+* **jaw** — the lower group (teeth, mandible, chin panels) drops into a black mouth
+  cavity; pistons and cheek struts come from the same traced art;
+* **head** — sweep (yaw with foreshortening), tilt, lean-in, nod on the syllables;
+* **failure** — the head tears into 12 displaced slices while the chrome dims.
+
+Every difference between states is a number in `AvatarPose` (eye glow/scale/look,
+jaw, speech level, yaw, chrome, glitch); there is no `switch` in the drawing code.
+The HUD around it (reticle ring, corner brackets, ruler ticks, scanner marks,
+glyphs, Cyberdyne logo, dot-matrix waveform) is part of the same canvas.
+
+The head's geometry, the measured grid and the **animation contract** (which signals
+the functionality has to feed — mainly `speechLevel`, the real playback level) are
+in [`design/t800-head.md`](design/t800-head.md).
+[`design/t800-head.gif`](design/t800-head.gif) is a real recording of the simulator
+talking; [`design/watchpilot-flow.gif`](design/watchpilot-flow.gif) is the older
+end-to-end hub run.
 
 ## Motion
 
-`TimelineView(.animation)` drives a `Canvas` — no `Timer`, no per-frame state change.
-Reduce Motion pauses the timeline, and the state is still legible because colour and
-copy carry it. The listening bars are the only element that moves with the voice;
-everything else breathes slowly enough to read.
+`TimelineView(.animation)` drives a `Canvas` at 30 Hz — no `Timer`, no per-frame
+state change. Reduce Motion pauses the timeline, and the state is still legible
+because colour and copy carry it. The jaw, the pupils and the dot-matrix waveform are the elements that
+move with the voice (mic power while listening, speech cadence while answering);
+everything else — the rotating ring, the scanning tick marks, the head sweep, the
+jaw — breathes on slow, mutually non-multiple periods so the visor never loops
+visibly.
 
-## Why the character is not a button alone
+## Why the whole visor is the button
 
-Fitts's law says the biggest target should do the main thing, so the character records — but
-a bare tappable sphere is invisible affordance. The labelled full-width button below it
-performs the same action in every state, so the screen is usable without discovering
-that the orb is tappable. In the `failed` state they diverge on purpose: the button
-recovers, the orb starts a new recording.
+Fitts's law says the biggest target should do the main thing — and the biggest
+target is the screen itself. The HUD performs the state's action on tap, and the
+footnote always says what a tap does right now ("toca para cancelar", "toca para
+abrir a resposta completa"), so the affordance is copy, not chrome. In the `failed`
+state a tap retries the pending task (or starts a new recording when none is
+pending) — recovery is always one tap away.
 
 ## Screenshots
 
@@ -108,8 +134,5 @@ Rendered from the simulator with `scripts/screenshot-states.sh`:
 | ![idle](design/screenshots/01-idle.png) | ![listening](design/screenshots/02-listening.png) | ![thinking](design/screenshots/03-thinking.png) |
 | ![answer](design/screenshots/04-answer.png) | ![error](design/screenshots/05-error.png) | ![hub](design/screenshots/06-live-hub.png) |
 
-`07-real-progress.png` é diferente das restantes: o app foi lançado com
-`-WPAttachTask <id>` e está a seguir uma tarefa **real** no hub (o texto "Ouvi: …"
-é a transcrição verdadeira e os 45 % são o estado verdadeiro da tarefa). As imagens
-01–05 usam `-WPDemoPhase <estado>` para congelar o orbe num estado; a 06 é a prova de
-ligação por TOTP dentro do watchOS.
+Todas as imagens usam `-WPDemoPhase <estado>` para congelar o visor num estado;
+a 06 é a prova de ligação ao hub por TOTP dentro do watchOS.

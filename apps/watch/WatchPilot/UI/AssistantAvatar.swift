@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// The assistant's face: a small vector character with one **pose per state**.
+/// The assistant's face: a Cyberdyne **T-800** endoskeleton skull inside a targeting
+/// HUD that fills the whole watch screen, drawn entirely in code with one **pose
+/// per state**.
 ///
 /// Why not Animoji/Memoji: Apple exposes no public API to instantiate or animate
 /// them (the renderer, `AvatarKit`, is a private framework), and watchOS has neither
@@ -8,6 +10,13 @@ import SwiftUI
 /// `docs/research/Q8-memoji-animoji.md`. So the character is drawn here with
 /// `Canvas`: no assets, no dependencies, 30 Hz, and the poses are **data**
 /// (`AvatarPose`) instead of hard-coded drawing branches.
+///
+/// Layout (design space 190×231 pt, scaled to fill the screen width): "T-800" and
+/// the system clock live on the top row; the HUD frame holds the Cyberdyne logo,
+/// the reticle ring with the skull (which overflows the ring, like the reference
+/// visor), ruler ticks with a moving scanner mark, corner brackets and decorative
+/// data glyphs; a dot-matrix waveform sits under the frame and the status line at
+/// the bottom over a dark scrim.
 struct AssistantAvatar: View {
     let phase: AssistantPhase
     var isReduceMotion: Bool = false
@@ -20,7 +29,7 @@ struct AssistantAvatar: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("Assistente Watch Pilot"))
+        .accessibilityLabel(Text("T-800, assistente Watch Pilot"))
         .accessibilityValue(Text(phase.headline))
     }
 }
@@ -30,58 +39,116 @@ struct AssistantAvatar: View {
 /// Everything that changes between states, as numbers. The renderer knows nothing
 /// about the app's state machine; it just interpolates this.
 struct AvatarPose {
-    var eyeOpen: Double = 1      // 0 closed … 1 wide
-    var happyEyes = false        // closed upward arcs
-    var eyeLook = CGSize.zero    // small gaze offset, in points
-    var mouthOpen: Double = 0    // 0 closed … 1 open
-    var smile: Double = 0.35     // −1 frown … 1 grin
-    var earLift: Double = 0.5    // antennae: 0 droopy … 1 standing
-    var headTilt: Double = 0     // radians
-    var bounce: Double = 0       // vertical offset, points
-    var glow: Double = 0.35
-    var thinkingDots = false
-    var uploadWaves = false
-    var core: Color = Palette.blue
-    var halo: Color = Palette.violet
-    var broken = false
+    // Olhos
+    var eyeGlow: Double      // 0 apagado … 1 brilho máximo das pupilas vermelhas
+    var eyeScale: Double     // tamanho das pupilas
+    var eyeLook: CGSize      // desvio do olhar, em pontos
+    var eyeFlicker: Bool     // falha: o olho direito pisca avariado
+    // Mandíbula
+    var jawOpen: Double      // 0 fechada … 1 aberta (abertura base)
+    var speaking: Bool       // a maxila fala sozinha (cadência de voz)
+    // Cabeça
+    var headTilt: Double     // rotação base, radianos
+    var headScale: Double    // aproximação (escuta = inclina-se para ti)
+    var headYaw: Double      // −1…1: vira a cabeça (aperto + paralaxe das peças)
+    var scanning: Bool       // varredura lenta esquerda↔direita
+    // HUD
+    var accent: Color        // vermelho Cyberdyne dos olhos e do HUD
+    var chrome: Double       // multiplicador de brilho do metal (0…1)
+    var ringSpeed: Double    // rotação do anel tracejado, graus/s
+    var ringProgress: Double? // arco de progresso no anel (a pensar)
+    var scanLine: Bool       // varredura vertical (a enviar)
+    var hudPulse: Bool       // cantos da mira pulsam (a ouvir)
+    var hudGlitch: Bool      // HUD avariado (falha)
+    // Waveform
+    var waveAmplitude: Double // 0…1, altura das barras de pontos
+    var waveSpeech: Bool     // padrão de fala (resposta) vs. padrão ambiente
+    /// Nível real de fala do T-800 (0…1) medido na reprodução do áudio da resposta.
+    /// `-1` mantém a cadência sintética, enquanto o hub devolver texto.
+    var speechLevel: Double
+
+    init(
+        eyeGlow: Double = 0.72,
+        eyeScale: Double = 1,
+        eyeLook: CGSize = .zero,
+        eyeFlicker: Bool = false,
+        jawOpen: Double = 0,
+        speaking: Bool = false,
+        headTilt: Double = 0,
+        headScale: Double = 1,
+        headYaw: Double = 0,
+        scanning: Bool = false,
+        accent: Color = Palette.crimson,
+        chrome: Double = 1,
+        ringSpeed: Double = 6,
+        ringProgress: Double? = nil,
+        scanLine: Bool = false,
+        hudPulse: Bool = false,
+        hudGlitch: Bool = false,
+        waveAmplitude: Double = 0.6,
+        waveSpeech: Bool = false,
+        speechLevel: Double = -1
+    ) {
+        self.eyeGlow = eyeGlow
+        self.eyeScale = eyeScale
+        self.eyeLook = eyeLook
+        self.eyeFlicker = eyeFlicker
+        self.jawOpen = jawOpen
+        self.speaking = speaking
+        self.headTilt = headTilt
+        self.headScale = headScale
+        self.headYaw = headYaw
+        self.scanning = scanning
+        self.accent = accent
+        self.chrome = chrome
+        self.ringSpeed = ringSpeed
+        self.ringProgress = ringProgress
+        self.scanLine = scanLine
+        self.hudPulse = hudPulse
+        self.hudGlitch = hudGlitch
+        self.waveAmplitude = waveAmplitude
+        self.waveSpeech = waveSpeech
+        self.speechLevel = speechLevel
+    }
 
     static func forPhase(_ phase: AssistantPhase) -> AvatarPose {
         switch phase {
         case .idle:
-            return AvatarPose(
-                eyeOpen: 1, mouthOpen: 0, smile: 0.25, earLift: 0.45,
-                glow: 0.32, core: Palette.blue, halo: Palette.violet
-            )
+            // Em espera: olhos em brasa, cabeça a varrer devagar, waveform calma
+            // mas presente — o visor nunca parece desligado.
+            return AvatarPose(headYaw: 0.15, scanning: true, ringSpeed: 5)
         case .listening(let power):
+            // A ouvir: pupilas abertas e brilhantes, cantos a pulsar, a waveform
+            // é o microfone — a amplitude já vem escalada pelo `power`.
             return AvatarPose(
-                eyeOpen: 1.12, mouthOpen: 0.25 + power * 0.75, smile: 0.15,
-                earLift: 1, glow: 0.45 + power * 0.35,
-                core: Palette.pink, halo: Palette.violet
+                eyeGlow: 0.85 + power * 0.15, eyeScale: 1.12,
+                headScale: 1.02, headYaw: -0.10 + power * 0.12, ringSpeed: 16,
+                hudPulse: true, waveAmplitude: 0.25 + power * 0.75
             )
         case .uploading:
+            // A enviar: olhar para cima, linha de varredura a subir o anel.
             return AvatarPose(
-                eyeOpen: 0.95, eyeLook: CGSize(width: 0, height: -2.6),
-                mouthOpen: 0.18, smile: 0.1, earLift: 0.75,
-                glow: 0.55, uploadWaves: true,
-                core: Palette.amber, halo: Palette.pink
+                eyeGlow: 0.9, eyeLook: CGSize(width: 0, height: -2.6),
+                headYaw: 0.05, ringSpeed: 26, scanLine: true, waveAmplitude: 0.4
             )
-        case .waiting:
+        case .waiting(let progress, _):
+            // A pensar: varredura de busca e o anel mostra o progresso real.
             return AvatarPose(
-                eyeOpen: 1, mouthOpen: 0.08, smile: 0.05, earLift: 0.55,
-                glow: 0.4, thinkingDots: true,
-                core: Palette.violet, halo: Palette.blue
+                eyeGlow: 0.8, headYaw: 0.1, scanning: true,
+                ringSpeed: 34, ringProgress: progress, waveAmplitude: 0.35
             )
         case .answering:
+            // A responder: a maxila fala e a waveform cospe a voz.
             return AvatarPose(
-                eyeOpen: 0.15, happyEyes: true, mouthOpen: 0.3, smile: 1,
-                earLift: 1, bounce: 1.6, glow: 0.6,
-                core: Palette.mint, halo: Palette.blue
+                eyeGlow: 1, jawOpen: 0.06, speaking: true,
+                headYaw: 0.06, ringSpeed: 10, waveAmplitude: 0.9, waveSpeech: true
             )
         case .failed:
+            // Falha: metal baço, olho direito a falhar, HUD em glitch.
             return AvatarPose(
-                eyeOpen: 0.45, mouthOpen: 0.05, smile: -0.8, earLift: 0,
-                headTilt: -0.06, glow: 0.2,
-                core: Palette.red, halo: Palette.amber, broken: true
+                eyeGlow: 0.45, eyeFlicker: true, jawOpen: 0.16, headTilt: -0.06,
+                headYaw: -0.08, chrome: 0.72, ringSpeed: 0, hudGlitch: true,
+                waveAmplitude: 0.06
             )
         }
     }
@@ -93,277 +160,366 @@ enum AvatarRenderer {
     static func draw(context: inout GraphicsContext, size: CGSize, time: TimeInterval, phase: AssistantPhase) {
         var pose = AvatarPose.forPhase(phase)
 
-        // Shared life: breathing everywhere, blinking when the eyes are open, a
-        // gentle idle sway. Motion is the difference between "a picture" and "a
-        // character waiting for you".
-        let breath = sin(time * 1.7) * 0.012
-        let sway = sin(time * 0.9) * 0.02
-        pose.headTilt += sway
-        pose.bounce += sin(time * 2.1) * 0.35
-
-        if pose.eyeOpen > 0.5 {
-            pose.eyeOpen *= blink(time)
+        // Vida partilhada: períodos deliberadamente não múltiplos entre si, para
+        // o conjunto nunca repetir visivelmente.
+        let scan = sin(time * 0.45)
+        if pose.scanning {
+            pose.eyeLook.width += scan * 3.2
+            pose.headTilt += scan * 0.04
         }
-        if pose.uploadsOrWaiting(phase) {
-            pose.eyeLook.width += sin(time * 1.9) * 2.2
+        pose.headTilt += sin(time * 0.9) * 0.012
+        if pose.speaking {
+            let cadence = max(0, sin(time * 7.3)) * (0.45 + 0.55 * (0.5 + 0.5 * sin(time * 1.31)))
+            pose.jawOpen = 0.10 + 0.72 * cadence
         }
 
-        let center = CGPoint(x: size.width / 2, y: size.height * 0.56 + pose.bounce)
-        let headRadius = min(size.width, size.height) * 0.285 * (1 + breath)
+        let glitch = glitchValue(time)
+        let w = size.width, h = size.height
+        // Medido na referência: centro a 43,3 % da altura, meia-altura 30,7 % da largura.
+        let skullCenter = CGPoint(x: w / 2, y: h * 0.433)
+        let unit = min(h * 0.307, w * 0.3066)
+        let ringRadius = w * 0.300
 
-        // 1. Halo — one continuous gradient, no stacked discs (no banding).
-        let glowRadius = headRadius * (1.85 + pose.glow * 0.5)
+        drawBackdrop(in: &context, center: skullCenter, ringRadius: ringRadius, pose: pose)
+        drawHUDFrame(in: &context, size: size, ringRadius: ringRadius, skullCenter: skullCenter, time: time, pose: pose, glitch: glitch)
+        drawReticle(in: &context, center: skullCenter, radius: ringRadius, time: time, pose: pose, glitch: glitch)
+        drawSkull(in: &context, center: skullCenter, unit: unit, time: time, pose: pose)
+        if pose.scanLine {
+            drawScanLine(in: &context, center: skullCenter, radius: ringRadius, time: time, pose: pose)
+        }
+        drawWaveform(in: &context, size: size, time: time, pose: pose)
+    }
+
+    // MARK: fundo e brilho
+
+    private static func drawBackdrop(in context: inout GraphicsContext, center: CGPoint, ringRadius: Double, pose: AvatarPose) {
+        let r = ringRadius * 1.5
         context.fill(
-            Path(ellipseIn: CGRect(
-                x: center.x - glowRadius, y: center.y - glowRadius,
-                width: glowRadius * 2, height: glowRadius * 2
-            )),
+            Path(ellipseIn: CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)),
             with: .radialGradient(
-                Gradient(colors: [pose.core.opacity(0.16 + pose.glow * 0.22), pose.halo.opacity(0.05), .clear]),
-                center: center, startRadius: headRadius * 0.4, endRadius: glowRadius
+                Gradient(colors: [pose.accent.opacity(0.05 + pose.eyeGlow * 0.05), .clear]),
+                center: center, startRadius: ringRadius * 0.3, endRadius: r
             )
         )
+    }
 
-        // 2. Shoulders, so the head sits on something.
-        let shoulderY = center.y + headRadius * 0.92
-        var shoulders = Path()
-        shoulders.move(to: CGPoint(x: center.x - headRadius * 0.78, y: shoulderY + headRadius * 0.55))
-        shoulders.addQuadCurve(
-            to: CGPoint(x: center.x + headRadius * 0.78, y: shoulderY + headRadius * 0.55),
-            control: CGPoint(x: center.x, y: shoulderY - headRadius * 0.22)
-        )
+    // MARK: moldura HUD
+
+    private static func drawHUDFrame(in context: inout GraphicsContext, size: CGSize, ringRadius: Double, skullCenter: CGPoint, time: TimeInterval, pose: AvatarPose, glitch: Double) {
+        let accent = pose.accent
+        let w = size.width, h = size.height
+        let flick = pose.hudGlitch && glitch > 0.72
+
+        // Moldura exterior — o rectângulo arredondado do visor.
+        let frame = CGRect(x: w * 0.015, y: h * 0.105, width: w * 0.97, height: h * 0.655)
         context.stroke(
-            shoulders,
-            with: .color(pose.core.opacity(0.35)),
-            style: StrokeStyle(lineWidth: 2, lineCap: .round)
+            Path(roundedRect: frame, cornerRadius: w * 0.105),
+            with: .color(Palette.muted.opacity(flick ? 0.15 : 0.4)),
+            style: StrokeStyle(lineWidth: 1)
         )
 
-        // 3. Antennae — they read the state: perked when listening, drooped on error.
-        for side in [-1.0, 1.0] {
-            let lift = pose.earLift
-            let rootAngle = side * (0.55 - 0.22 * lift)
-            let root = CGPoint(
-                x: center.x + sin(rootAngle) * headRadius * 0.92,
-                y: center.y - cos(rootAngle) * headRadius * 0.92
-            )
-            let length = headRadius * (0.36 + 0.26 * lift)
-            let tip = CGPoint(
-                x: root.x + sin(rootAngle) * length,
-                y: root.y - cos(rootAngle) * length
-            )
-            var stalk = Path()
-            stalk.move(to: root)
-            stalk.addLine(to: tip)
-            context.stroke(stalk, with: .color(pose.core.opacity(0.75)), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+        // Cantos da mira (brackets vermelhos) à volta do anel.
+        let bracketRect = CGRect(x: w * 0.16, y: h * 0.155, width: w * 0.68, height: h * 0.52)
+        let pulse = pose.hudPulse ? 0.6 + 0.4 * (0.5 + 0.5 * sin(time * 3.1)) : 0.9
+        let jx = flick ? (glitch - 0.86) * 16 : 0
+        drawBrackets(in: &context, rect: bracketRect.offsetBy(dx: jx, dy: 0), arm: 11,
+                     color: accent.opacity(flick ? 0.35 : pulse))
 
-            let ball = headRadius * 0.085
-            let ballCenter = CGPoint(x: tip.x, y: tip.y - ball * 0.4)
-            context.fill(
-                Path(ellipseIn: CGRect(x: ballCenter.x - ball, y: ballCenter.y - ball, width: ball * 2, height: ball * 2)),
-                with: .color(pose.core.opacity(0.95))
-            )
-            // a soft light around each antenna tip
-            let aura = ball * 3.4
-            context.fill(
-                Path(ellipseIn: CGRect(x: ballCenter.x - aura, y: ballCenter.y - aura, width: aura * 2, height: aura * 2)),
-                with: .radialGradient(
-                    Gradient(colors: [pose.core.opacity(0.35 * pose.earLift), .clear]),
-                    center: ballCenter, startRadius: 0, endRadius: aura
-                )
-            )
-        }
+        // Réguas de ticks laterais + marcas de varredura.
+        drawTickColumn(in: &context, x: w * 0.030, top: h * 0.19, bottom: h * 0.735, flip: false,
+                       time: time, accent: accent, speed: 5.5)
+        drawTickColumn(in: &context, x: w * 0.970, top: h * 0.19, bottom: h * 0.735, flip: true,
+                       time: time, accent: accent, speed: 4.1)
 
-        // 4. Head: light from the top-left so it reads as a solid object.
-        let headRect = CGRect(
-            x: center.x - headRadius, y: center.y - headRadius,
-            width: headRadius * 2, height: headRadius * 2
-        )
-        let head = Path(roundedRect: headRect, cornerRadius: headRadius * 0.46)
-        let headTransform = CGAffineTransform(translationX: center.x, y: center.y)
-            .rotated(by: pose.headTilt)
-            .translatedBy(x: -center.x, y: -center.y)
-        let tiltedHead = head.applying(headTransform)
-
+        // Segmento vermelho fixo na régua esquerda (como no visor de referência).
         context.fill(
-            tiltedHead,
-            with: .linearGradient(
-                Gradient(colors: [
-                    pose.core.opacity(0.95),
-                    pose.halo.opacity(0.75),
-                    pose.halo.opacity(0.22),
-                ]),
-                startPoint: CGPoint(x: center.x - headRadius * 0.6, y: center.y - headRadius * 0.8),
-                endPoint: CGPoint(x: center.x + headRadius * 0.5, y: center.y + headRadius * 0.9)
-            )
-        )
-        context.stroke(
-            tiltedHead,
-            with: .linearGradient(
-                Gradient(colors: [.white.opacity(0.55), pose.core.opacity(0.06)]),
-                startPoint: CGPoint(x: center.x, y: center.y - headRadius),
-                endPoint: CGPoint(x: center.x, y: center.y + headRadius)
-            ),
-            style: StrokeStyle(lineWidth: 1.1)
+            Path(CGRect(x: w * 0.030 + 5.5, y: h * 0.520, width: 3.2, height: h * 0.075)),
+            with: .color(accent.opacity(0.9))
         )
 
-        // 5. Face (inside the head, so it tilts with it).
-        var face = context
-        face.translateBy(x: center.x, y: center.y)
-        face.rotate(by: .radians(pose.headTilt))
-        face.translateBy(x: -center.x, y: -center.y)
+        // Logo Cyberdyne: triângulo vermelho vazado + duas linhas de texto.
+        drawCyberdyneLogo(in: &context, origin: CGPoint(x: w * 0.062, y: h * 0.150), accent: accent)
 
-        drawEyes(in: &face, center: center, radius: headRadius, pose: pose)
-        drawMouth(in: &face, center: center, radius: headRadius, pose: pose)
-
-        // 6. Extras that say what the hub is doing.
-        if pose.thinkingDots {
-            drawThinkingDots(in: &face, center: center, radius: headRadius, time: time, color: pose.core)
-        }
-        if pose.uploadWaves {
-            drawUploadWaves(in: &face, center: center, radius: headRadius, time: time, color: pose.core)
-        }
+        // Glifos de dados — decoração de terminal, sem significado.
+        drawGlyphs(in: &context, size: size, accent: accent, dim: flick)
     }
 
-    // MARK: parts
-
-    private static func drawEyes(in context: inout GraphicsContext, center: CGPoint, radius: Double, pose: AvatarPose) {
-        let eyeSpacing = radius * 0.40
-        let eyeWidth = radius * 0.24
-        let baseHeight = radius * 0.34
-        let eyeY = center.y - radius * 0.10
-
-        for side in [-1.0, 1.0] {
-            let eyeCenter = CGPoint(
-                x: center.x + side * eyeSpacing + pose.eyeLook.width,
-                y: eyeY + pose.eyeLook.height
-            )
-
-            if pose.happyEyes {
-                // A closed, upward arc — the universal "content" eye.
-                var arc = Path()
-                arc.move(to: CGPoint(x: eyeCenter.x - eyeWidth * 0.72, y: eyeCenter.y + eyeWidth * 0.25))
-                arc.addQuadCurve(
-                    to: CGPoint(x: eyeCenter.x + eyeWidth * 0.72, y: eyeCenter.y + eyeWidth * 0.25),
-                    control: CGPoint(x: eyeCenter.x, y: eyeCenter.y - eyeWidth * 0.75)
-                )
-                context.stroke(arc, with: .color(.white.opacity(0.95)), style: StrokeStyle(lineWidth: radius * 0.075, lineCap: .round))
-                continue
-            }
-
-            let height = max(radius * 0.045, baseHeight * pose.eyeOpen)
-            let rect = CGRect(
-                x: eyeCenter.x - eyeWidth / 2,
-                y: eyeCenter.y - height / 2,
-                width: eyeWidth,
-                height: height
-            )
-            context.fill(Path(roundedRect: rect, cornerRadius: eyeWidth / 2), with: .color(.white.opacity(0.96)))
-
-            // Catch-light: the single detail that makes it feel alive.
-            if pose.eyeOpen > 0.55 {
-                let sparkle = radius * 0.045
-                let sparkleCenter = CGPoint(x: eyeCenter.x + eyeWidth * 0.16, y: eyeCenter.y - height * 0.18)
-                context.fill(
-                    Path(ellipseIn: CGRect(
-                        x: sparkleCenter.x - sparkle, y: sparkleCenter.y - sparkle,
-                        width: sparkle * 2, height: sparkle * 2
-                    )),
-                    with: .color(.black.opacity(0.35))
-                )
-            }
-
-            if pose.broken {
-                // Crossed-out eyes for the failure pose.
-                var cross = Path()
-                let d = eyeWidth * 0.55
-                cross.move(to: CGPoint(x: eyeCenter.x - d, y: eyeCenter.y - d))
-                cross.addLine(to: CGPoint(x: eyeCenter.x + d, y: eyeCenter.y + d))
-                cross.move(to: CGPoint(x: eyeCenter.x + d, y: eyeCenter.y - d))
-                cross.addLine(to: CGPoint(x: eyeCenter.x - d, y: eyeCenter.y + d))
-                context.stroke(cross, with: .color(Palette.background.opacity(0.85)), style: StrokeStyle(lineWidth: radius * 0.06, lineCap: .round))
-            }
-        }
-    }
-
-    private static func drawMouth(in context: inout GraphicsContext, center: CGPoint, radius: Double, pose: AvatarPose) {
-        let mouthY = center.y + radius * 0.38
-        let mouthWidth = radius * 0.42
-
-        if pose.mouthOpen > 0.12 {
-            let height = radius * 0.08 + radius * 0.17 * pose.mouthOpen
-            let width = mouthWidth * 1.18
-            let rect = CGRect(
-                x: center.x - width / 2,
-                y: mouthY - height / 2 + (1 - pose.smile) * radius * 0.03,
-                width: width,
-                height: height
-            )
-            context.fill(Path(roundedRect: rect, cornerRadius: height / 2), with: .color(Palette.background.opacity(0.72)))
-            return
-        }
-
-        // Closed mouth: a curve whose curvature is the emotional state.
-        let curve = radius * 0.16 * pose.smile
+    private static func drawBrackets(in context: inout GraphicsContext, rect: CGRect, arm: Double, color: Color) {
         var path = Path()
-        path.move(to: CGPoint(x: center.x - mouthWidth / 2, y: mouthY))
-        path.addQuadCurve(
-            to: CGPoint(x: center.x + mouthWidth / 2, y: mouthY),
-            control: CGPoint(x: center.x, y: mouthY + curve)
-        )
-        context.stroke(path, with: .color(Palette.background.opacity(0.75)), style: StrokeStyle(lineWidth: radius * 0.055, lineCap: .round))
+        let corners: [(CGPoint, CGSize)] = [
+            (CGPoint(x: rect.minX, y: rect.minY), CGSize(width: 1, height: 1)),
+            (CGPoint(x: rect.maxX, y: rect.minY), CGSize(width: -1, height: 1)),
+            (CGPoint(x: rect.minX, y: rect.maxY), CGSize(width: 1, height: -1)),
+            (CGPoint(x: rect.maxX, y: rect.maxY), CGSize(width: -1, height: -1)),
+        ]
+        for (corner, direction) in corners {
+            path.move(to: CGPoint(x: corner.x + direction.width * arm, y: corner.y))
+            path.addLine(to: corner)
+            path.addLine(to: CGPoint(x: corner.x, y: corner.y + direction.height * arm))
+        }
+        context.stroke(path, with: .color(color), style: StrokeStyle(lineWidth: 2, lineCap: .square))
     }
 
-    private static func drawThinkingDots(in context: inout GraphicsContext, center: CGPoint, radius: Double, time: TimeInterval, color: Color) {
-        for index in 0..<3 {
-            let phase = time * 2.6 - Double(index) * 0.5
-            let alpha = 0.25 + 0.65 * (0.5 + 0.5 * sin(phase))
-            let dot = radius * 0.06
-            let x = center.x + radius * (0.62 + Double(index) * 0.22)
-            let y = center.y - radius * (0.72 + Double(index) * 0.06)
+    private static func drawTickColumn(in context: inout GraphicsContext, x: Double, top: Double, bottom: Double, flip: Bool, time: TimeInterval, accent: Color, speed: Double) {
+        let step = 5.0
+        var ticks = Path()
+        var y = top
+        while y <= bottom {
+            ticks.move(to: CGPoint(x: x, y: y))
+            ticks.addLine(to: CGPoint(x: x + (flip ? -6 : 6), y: y))
+            y += step
+        }
+        context.stroke(ticks, with: .color(Palette.muted.opacity(0.5)), style: StrokeStyle(lineWidth: 0.9))
+
+        var spine = Path()
+        spine.move(to: CGPoint(x: x + (flip ? -8 : 8), y: top - 3))
+        spine.addLine(to: CGPoint(x: x + (flip ? -8 : 8), y: bottom + 3))
+        context.stroke(spine, with: .color(Palette.muted.opacity(0.28)), style: StrokeStyle(lineWidth: 0.8))
+
+        // A marca vermelha que corre a régua — o "scanner".
+        let count = Int((bottom - top) / step)
+        let index = Int(time * speed) % (count + 1)
+        let markY = top + Double(index) * step
+        context.fill(
+            Path(CGRect(x: x + (flip ? -7 : 0), y: markY - 1.3, width: 7, height: 2.6)),
+            with: .color(accent.opacity(0.95))
+        )
+    }
+
+    private static func drawCyberdyneLogo(in context: inout GraphicsContext, origin: CGPoint, accent: Color) {
+        var triangle = Path()
+        triangle.move(to: CGPoint(x: origin.x + 6, y: origin.y))
+        triangle.addLine(to: CGPoint(x: origin.x + 12, y: origin.y + 10.5))
+        triangle.addLine(to: CGPoint(x: origin.x, y: origin.y + 10.5))
+        triangle.closeSubpath()
+        context.fill(triangle, with: .color(accent.opacity(0.95)))
+
+        var inner = Path()
+        inner.move(to: CGPoint(x: origin.x + 6, y: origin.y + 4))
+        inner.addLine(to: CGPoint(x: origin.x + 9.1, y: origin.y + 9.4))
+        inner.addLine(to: CGPoint(x: origin.x + 2.9, y: origin.y + 9.4))
+        inner.closeSubpath()
+        context.fill(inner, with: .color(Palette.background))
+
+        let style = { (text: String) in
+            Text(text).font(.system(size: 6.8, weight: .semibold, design: .rounded))
+                .foregroundStyle(Palette.muted.opacity(0.95))
+        }
+        context.draw(style("CYBERDYNE"), at: CGPoint(x: origin.x + 16.5, y: origin.y + 4), anchor: .leading)
+        context.draw(style("SYSTEMS"), at: CGPoint(x: origin.x + 16.5, y: origin.y + 11), anchor: .leading)
+    }
+
+    private static func drawGlyphs(in context: inout GraphicsContext, size: CGSize, accent: Color, dim: Bool) {
+        let gray = Palette.muted.opacity(dim ? 0.2 : 0.6)
+        let red = accent.opacity(dim ? 0.3 : 0.9)
+        let w = size.width, h = size.height
+
+        // Canto superior direito: pequena marca vermelha + linhas de "texto".
+        var mark = Path()
+        mark.move(to: CGPoint(x: w * 0.775, y: h * 0.165))
+        mark.addLine(to: CGPoint(x: w * 0.775, y: h * 0.192))
+        mark.addLine(to: CGPoint(x: w * 0.805, y: h * 0.192))
+        context.stroke(mark, with: .color(red), style: StrokeStyle(lineWidth: 1.6))
+        for (index, width) in [0.09, 0.06, 0.075].enumerated() {
             context.fill(
-                Path(ellipseIn: CGRect(x: x - dot, y: y - dot, width: dot * 2, height: dot * 2)),
-                with: .color(color.opacity(alpha))
+                Path(CGRect(x: w * 0.825, y: h * (0.165 + Double(index) * 0.016), width: w * width, height: 2.2)),
+                with: .color(gray)
             )
         }
+
+        // Canto inferior esquerdo: chevrons vermelhos + barras.
+        var chevrons = Path()
+        chevrons.move(to: CGPoint(x: w * 0.10, y: h * 0.575))
+        chevrons.addLine(to: CGPoint(x: w * 0.078, y: h * 0.59))
+        chevrons.addLine(to: CGPoint(x: w * 0.10, y: h * 0.605))
+        chevrons.move(to: CGPoint(x: w * 0.128, y: h * 0.575))
+        chevrons.addLine(to: CGPoint(x: w * 0.106, y: h * 0.59))
+        chevrons.addLine(to: CGPoint(x: w * 0.128, y: h * 0.605))
+        context.stroke(chevrons, with: .color(red), style: StrokeStyle(lineWidth: 1.4, lineCap: .round))
+        context.fill(Path(CGRect(x: w * 0.15, y: h * 0.572, width: w * 0.09, height: 2.2)), with: .color(gray))
+        context.fill(Path(CGRect(x: w * 0.15, y: h * 0.6, width: w * 0.06, height: 2.2)), with: .color(gray))
+
+        // Canto inferior direito: blocos de estado.
+        context.fill(Path(CGRect(x: w * 0.755, y: h * 0.60, width: 10, height: 6)), with: .color(gray))
+        context.fill(Path(CGRect(x: w * 0.755 + 12, y: h * 0.60, width: 10, height: 6)), with: .color(gray))
+        context.fill(Path(CGRect(x: w * 0.755 + 24, y: h * 0.60, width: 10, height: 6)), with: .color(red))
+        context.fill(Path(CGRect(x: w * 0.80, y: h * 0.575, width: 11, height: 2.2)), with: .color(red))
     }
 
-    private static func drawUploadWaves(in context: inout GraphicsContext, center: CGPoint, radius: Double, time: TimeInterval, color: Color) {
-        for index in 0..<3 {
-            let pulse = (sin(time * 3 - Double(index) * 0.7) + 1) / 2
+    // MARK: anel retícula
+
+    private static func drawReticle(in context: inout GraphicsContext, center: CGPoint, radius r: Double, time: TimeInterval, pose: AvatarPose, glitch: Double) {
+        let ringRect = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
+        let flick = pose.hudGlitch && glitch > 0.72
+
+        context.stroke(
+            Path(ellipseIn: ringRect),
+            with: .color(Palette.muted.opacity(flick ? 0.2 : 0.55)),
+            style: StrokeStyle(lineWidth: 1.4)
+        )
+
+        // Arco tracejado rotativo — a "mira" que nunca pára quieta.
+        if pose.ringSpeed > 0 {
+            var rotating = context
+            rotating.translateBy(x: center.x, y: center.y)
+            rotating.rotate(by: .degrees(time * pose.ringSpeed))
+            rotating.translateBy(x: -center.x, y: -center.y)
+            rotating.stroke(
+                Path(ellipseIn: ringRect),
+                with: .color(pose.accent.opacity(0.75)),
+                style: StrokeStyle(lineWidth: 1.6, dash: [6, 15])
+            )
+        }
+
+        // Arco de progresso real enquanto o hub pensa.
+        if let progress = pose.ringProgress {
             var arc = Path()
-            let arcRadius = radius * (1.15 + Double(index) * 0.18)
             arc.addArc(
-                center: CGPoint(x: center.x, y: center.y - radius * 0.35),
-                radius: arcRadius,
-                startAngle: .degrees(-152), endAngle: .degrees(-28),
+                center: center, radius: r,
+                startAngle: .degrees(-90), endAngle: .degrees(-90 + 360 * min(1, max(0, progress))),
                 clockwise: false
             )
-            context.stroke(
-                arc,
-                with: .color(color.opacity(0.12 + pulse * 0.42)),
-                style: StrokeStyle(lineWidth: 1.4, lineCap: .round)
+            context.stroke(arc, with: .color(pose.accent), style: StrokeStyle(lineWidth: 2.8, lineCap: .round))
+        }
+
+        // Segmento vermelho fixo no quadrante inferior esquerdo (como no visor).
+        var segment = Path()
+        segment.addArc(center: center, radius: r, startAngle: .degrees(118), endAngle: .degrees(162), clockwise: false)
+        context.stroke(segment, with: .color(pose.accent.opacity(0.9)), style: StrokeStyle(lineWidth: 2.2, lineCap: .round))
+
+        // Cruzes de mira nos quatro pontos cardeais.
+        let pulse = 0.55 + 0.4 * (0.5 + 0.5 * sin(time * 2.2))
+        var cross = Path()
+        for angle in [0.0, .pi / 2, .pi, 3 * .pi / 2] {
+            let dir = CGPoint(x: cos(angle), y: sin(angle))
+            let outer = CGPoint(x: center.x + dir.x * (r + 9), y: center.y + dir.y * (r + 9))
+            let inner = CGPoint(x: center.x + dir.x * (r + 3), y: center.y + dir.y * (r + 3))
+            cross.move(to: outer)
+            cross.addLine(to: inner)
+        }
+        context.stroke(cross, with: .color(pose.accent.opacity(pulse)), style: StrokeStyle(lineWidth: 1.8, lineCap: .square))
+    }
+
+    // MARK: scanline (a enviar)
+
+    private static func drawScanLine(in context: inout GraphicsContext, center: CGPoint, radius r: Double, time: TimeInterval, pose: AvatarPose) {
+        let sweep = (time * 38).truncatingRemainder(dividingBy: 100)
+        let y = center.y - r + 6 + sweep * ((r * 2 - 12) / 100)
+        let half = r * 0.94
+
+        context.fill(
+            Path(CGRect(x: center.x - half, y: y - 8, width: half * 2, height: 8)),
+            with: .linearGradient(
+                Gradient(colors: [.clear, pose.accent.opacity(0.14)]),
+                startPoint: CGPoint(x: center.x, y: y - 8),
+                endPoint: CGPoint(x: center.x, y: y)
             )
-        }
+        )
+        context.fill(
+            Path(CGRect(x: center.x - half, y: y, width: half * 2, height: 1.4)),
+            with: .linearGradient(
+                Gradient(colors: [.clear, pose.accent.opacity(0.9), .clear]),
+                startPoint: CGPoint(x: center.x - half, y: y),
+                endPoint: CGPoint(x: center.x + half, y: y)
+            )
+        )
     }
 
-    // MARK: timing
+    // MARK: o crânio T-800
 
-    /// A blink every ~4 s, closing and opening over ~140 ms.
-    private static func blink(_ time: TimeInterval) -> Double {
-        let period = 4.2
-        let phase = time.truncatingRemainder(dividingBy: period) / period
-        if phase > 0.035 { return 1 }
-        let progress = phase / 0.035
-        return 0.06 + 0.94 * abs(progress * 2 - 1)
+    // MARK: o crânio T-800
+
+    /// The head is `T800Head`: flat metal traced from the reference visor, driven
+    /// by the pose. Everything that changes between states is a number in
+    /// `AvatarPose` — the drawing code has no `switch`.
+    private static func drawSkull(in context: inout GraphicsContext, center c: CGPoint, unit u: Double, time: TimeInterval, pose: AvatarPose) {
+        var head = context
+        head.translateBy(x: c.x, y: c.y)
+        head.rotate(by: .radians(pose.headTilt))
+        head.scaleBy(x: pose.headScale, y: pose.headScale)
+        head.translateBy(x: -c.x, y: -c.y)
+
+        let speech = pose.speechLevel >= 0
+            ? pose.speechLevel
+            : (pose.speaking ? Self.speechEnvelope(time) : 0)
+        var p = HeadPose()
+        p.eyeGlow = pose.eyeGlow
+        p.eyeScale = pose.eyeScale
+        p.eyeLook = CGSize(width: pose.eyeLook.width / u, height: pose.eyeLook.height / u)
+        p.eyeFlicker = pose.eyeFlicker
+        p.jawOpen = pose.jawOpen
+        p.speech = pose.speechLevel >= 0 ? speech : speech * pose.waveAmplitude * 1.1
+        p.headTilt = 0                        // já aplicado acima
+        p.headScale = 1
+        p.headYaw = pose.headYaw + (pose.scanning ? sin(time * 0.45) * 0.55 : 0)
+        p.nod = sin(time * 1.7) * 0.35 + speech * sin(time * 7.3) * 0.9
+        p.chrome = pose.chrome
+        p.tear = pose.hudGlitch ? 0.35 + 0.25 * sin(time * 5.1) : 0
+
+        T800Head.draw(in: &head, center: c, unit: u, pose: p, time: time)
     }
-}
 
-private extension AvatarPose {
-    func uploadsOrWaiting(_ phase: AssistantPhase) -> Bool {
-        switch phase {
-        case .waiting, .uploading: return true
-        default: return false
+    /// Cadência de fala sintética — usada enquanto o hub devolve texto. Quando o
+    /// áudio do T-800 tocar no relógio, o nível real entra em `pose.speechLevel`.
+    private static func speechEnvelope(_ time: TimeInterval) -> Double {
+        let syllable = max(0, sin(time * 7.3)) * (0.45 + 0.55 * (0.5 + 0.5 * sin(time * 1.31)))
+        return min(1, 0.15 + syllable)
+    }
+
+    // MARK: waveform de pontos
+
+    private static func drawWaveform(in context: inout GraphicsContext, size: CGSize, time: TimeInterval, pose: AvatarPose) {
+        let bars = 42
+        let left = size.width * 0.045, right = size.width * 0.955
+        let pitch = (right - left) / Double(bars - 1)
+        let centerY = size.height * 0.890
+        let maxHalf = size.height * 0.090
+        let dot = 2.2, step = 2.6
+
+        var dots = Path()
+        for index in 0..<bars {
+            let height = waveHeight(index: index, time: time, pose: pose) * maxHalf
+            let stacks = 1 + Int(height / step)
+            let x = left + Double(index) * pitch
+            for stack in 0..<stacks {
+                let dy = Double(stack) * step
+                dots.addRect(CGRect(x: x - dot / 2, y: centerY - dy - dot, width: dot, height: dot))
+                if stack > 0 {
+                    dots.addRect(CGRect(x: x - dot / 2, y: centerY + dy, width: dot, height: dot))
+                }
+            }
         }
+        context.fill(dots, with: .color(pose.accent.opacity(0.92)))
+    }
+
+    /// Altura 0…1 de cada barra: soma de senos com períodos não múltiplos, com
+    /// rajadas de sílabas na fala e picos avariados na falha.
+    private static func waveHeight(index: Int, time: TimeInterval, pose: AvatarPose) -> Double {
+        let i = Double(index)
+        var value = 0.42 * (0.5 + 0.5 * sin(i * 1.7 + time * 5.1))
+        value += 0.35 * (0.5 + 0.5 * sin(i * 0.63 - time * 3.3))
+        value += 0.23 * (0.5 + 0.5 * sin(i * 2.9 + time * 7.7))
+        if pose.waveSpeech {
+            let burst = pow(0.5 + 0.5 * sin(time * 2.9 + sin(time * 0.77) * 2.0), 1.6)
+            value *= 0.35 + 0.85 * burst
+        }
+        if pose.hudGlitch {
+            if glitchValue(time + i * 0.13) > 0.86 {
+                value = 1
+            } else {
+                value *= 0.3
+            }
+        }
+        return min(1, value) * pose.waveAmplitude
+    }
+
+    // MARK: tempo
+
+    /// Ruído determinístico por fatias de ~110 ms — o glitch da falha sem estado.
+    private static func glitchValue(_ time: TimeInterval) -> Double {
+        let n = (time * 9).rounded(.down)
+        let s = sin(n * 12.9898) * 43758.5453
+        return abs(s.truncatingRemainder(dividingBy: 1))
     }
 }
 
@@ -375,6 +531,6 @@ private extension AvatarPose {
         AssistantAvatar(phase: .answering(reply: "Feito"))
         AssistantAvatar(phase: .failed(message: "Falhou"))
     }
-    .frame(height: 60)
+    .frame(width: 190, height: 231)
     .background(Palette.background)
 }

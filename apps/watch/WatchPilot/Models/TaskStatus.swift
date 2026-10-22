@@ -64,7 +64,7 @@ enum AssistantPhase: Equatable {
     /// Short headline shown under the orb.
     var headline: String {
         switch self {
-        case .idle: return "Toca para falar"
+        case .idle: return "Como posso ajudar?"
         case .listening: return "A ouvir…"
         case .uploading: return "A enviar ao Mac mini…"
         case .waiting(let progress, let step):
@@ -79,9 +79,9 @@ enum AssistantPhase: Equatable {
         switch self {
         case .idle: return "Comando de voz para o Mac mini"
         case .listening: return "Toca outra vez para enviar"
-        case .uploading: return "Áudio a caminho do Mac mini"
-        case .waiting: return "Podes baixar o pulso — aviso quando terminar"
-        case .answering: return "Resposta do Mac mini"
+        case .uploading: return "A caminho do Mac mini · toca para cancelar"
+        case .waiting: return "Aviso quando terminar · toca para cancelar"
+        case .answering: return "Toca para abrir a resposta completa"
         case .failed: return "Toca para tentar de novo"
         }
     }
