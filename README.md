@@ -42,6 +42,7 @@ Xcode 27.1) — not estimated.
 | Public subdomain | `https://watch.kluser.me` serves the hub; API calls pass with a watch-generated TOTP |
 | watchOS app | builds unsigned for device **and** simulator; runs in the watchOS 27 simulator and **connects to the hub over TOTP** |
 | Hub tests | `51 passed` (RFC 4226/6238 vectors, replay guard, auth, pipeline) |
+| Boot | LaunchDaemon re-starts the hub **and** re-creates the `watch.kluser.me` route: hub live in 5 s, route in 20 s, edge 200 in 42 s after a cold start |
 
 Screenshots of every state: [`docs/design/screenshots`](docs/design/screenshots).
 
@@ -157,7 +158,7 @@ apps/mac-tools/      wtx-transcribe — SpeechAnalyzer CLI
 server/app/          FastAPI hub (config, security, transcribe, llm, notify, tasks, web)
 server/tests/        51 tests
 scripts/             wp.py CLI, installers, publish, screenshots
-docs/                architecture, setup, design, deep-research dossier
+docs/                architecture, setup, infra, design, deep-research dossier
 infra/               launchd + tunnel notes
 ```
 
