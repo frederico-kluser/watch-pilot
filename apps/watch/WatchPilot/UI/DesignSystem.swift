@@ -14,4 +14,8 @@ enum Palette {
     static let amber = Color(red: 1.0, green: 0.769, blue: 0.353)
     static let red = Color(red: 1.0, green: 0.420, blue: 0.420)
     static let violet = Color(red: 0.639, green: 0.518, blue: 1.0)
+
+    /// O vermelho Cyberdyne do HUD e dos olhos do T-800 — mais profundo e
+    /// saturado que o `red` de texto, pensado para brilhar sobre OLED negro.
+    static let crimson = Color(red: 1.0, green: 0.16, blue: 0.20)
 }

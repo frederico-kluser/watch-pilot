@@ -15,22 +15,20 @@ struct ContentView: View {
     @State private var showFullAnswer = false
 
     var body: some View {
-        // A single screen with three bands: optical target, copy, action. The copy
-        // flexes; the orb and the button never do.
-        VStack(spacing: 2) {
-            orbButton
-            // The copy band scrolls inside a fixed slice: a long answer can always be
-            // read, and it can never push the button off the screen.
-            ScrollView {
-                statusBlock.padding(.vertical, 1)
+        // O visor do T-800 ocupa o ecrã INTEIRO: o HUD é o botão (a ação depende
+        // do estado) e por cima flutuam a barra de topo e a legenda.
+        ZStack {
+            hudButton
+            VStack(spacing: 0) {
+                topBar
+                Spacer(minLength: 0)
+                statusBlock
             }
-            .scrollIndicators(.hidden)
-            .layoutPriority(1)
-            .frame(minHeight: 54, maxHeight: .infinity)
-            actionButton
         }
-        .padding(.horizontal, 2)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // Full-bleed, como o visor da referência: o "T-800" partilha a linha do
+        // relógio do sistema e o HUD usa o ecrã todo.
+        .ignoresSafeArea(.container, edges: [.top, .bottom])
         .background(Palette.background.ignoresSafeArea())
         .dynamicTypeSize(.xSmall ... .accessibility1)
         .onChange(of: scenePhase) { _, newPhase in
@@ -58,49 +56,96 @@ struct ContentView: View {
         .sheet(isPresented: $showFullAnswer) { AnswerDetailView() }
     }
 
-    // MARK: - Orb
+    // MARK: - Barra de topo
 
-    private var orbButton: some View {
-        Button(action: { controller.toggleRecording() }) {
-            AssistantAvatar(phase: controller.phase, isReduceMotion: reduceMotion)
-                .frame(width: 96, height: 92)
-                .contentShape(Circle())
+    /// "T-800" à esquerda, com ● vermelho enquanto grava. A hora já vive na barra
+    /// de status do watchOS (canto superior direito), como no visor da Cyberdyne.
+    private var topBar: some View {
+        HStack(spacing: 4) {
+            if controller.phase.isRecording {
+                Circle()
+                    .fill(Palette.crimson)
+                    .frame(width: 5, height: 5)
+            }
+            Text("T-800")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundStyle(Palette.muted)
+            Spacer()
+        }
+        .padding(.horizontal, 10)
+        .padding(.top, 4)
+    }
+
+    // MARK: - HUD
+
+    /// O visor inteiro é o botão: tocar no HUD executa a ação do estado (gravar,
+    /// enviar, cancelar, abrir a resposta). O crânio desenha-se num espaço de
+    /// 190×231 pt e escala pela largura do relógio que o hospeda.
+    private var hudButton: some View {
+        Button(action: primaryAction) {
+            GeometryReader { geo in
+                AssistantAvatar(phase: controller.phase, isReduceMotion: reduceMotion)
+                    .frame(width: 190, height: 231)
+                    .scaleEffect(geo.size.width / 190)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .contentShape(Rectangle())
+            }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text(controller.phase.isRecording ? "Enviar comando" : "Gravar comando de voz"))
+        .accessibilityLabel(Text(hudAccessibilityLabel))
         .accessibilityHint(Text(controller.phase.hint))
-        .disabled(controller.phase.isBusy)
+    }
+
+    private var hudAccessibilityLabel: String {
+        if !controller.pairingReady { return "Emparelhar" }
+        switch controller.phase {
+        case .listening: return "Enviar comando"
+        case .uploading, .waiting: return "Cancelar comando"
+        case .answering: return "Abrir a resposta completa"
+        case .failed: return "Tentar de novo"
+        case .idle: return "Gravar comando de voz"
+        }
     }
 
     // MARK: - Copy
 
+    /// A legenda do visor, por cima do scrim escuro no fim do canvas. A resposta
+    /// do hub pode crescer (scroll) sem nunca empurrar nada do sítio.
     private var statusBlock: some View {
-        VStack(spacing: 2) {
-            Text(controller.phase.headline)
-                .font(.system(.footnote, design: .rounded, weight: .semibold))
-                .foregroundStyle(headlineColor)
-                .multilineTextAlignment(.center)
-                .lineLimit(controller.phase.isBusy ? 3 : 4)
-                .minimumScaleFactor(0.8)
-                .fixedSize(horizontal: false, vertical: true)
+        ScrollView {
+            VStack(spacing: 1) {
+                Text(controller.phase.headline)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+                    .foregroundStyle(headlineColor)
+                    .textCase(isShortStatus ? .uppercase : nil)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(isShortStatus ? 1 : 4)
+                    .minimumScaleFactor(0.85)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            if let spoken = transcriptLine {
-                Text(spoken)
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundStyle(Palette.muted)
+                if let spoken = transcriptLine {
+                    Text(spoken)
+                        .font(.system(size: 8.5, design: .rounded))
+                        .foregroundStyle(Palette.muted)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Text(footnote)
+                    .font(.system(size: 8.5, design: .rounded))
+                    .foregroundStyle(Palette.muted.opacity(0.85))
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-
-            Text(footnote)
-                .font(.system(.caption2, design: .rounded))
-                .foregroundStyle(Palette.muted.opacity(0.85))
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 1)
         }
-        .padding(.horizontal, 4)
+        .scrollIndicators(.hidden)
+        .frame(maxHeight: isShortStatus ? 42 : 62)
+        .padding(.bottom, 4)
         .animation(.easeInOut(duration: 0.2), value: controller.phase)
     }
 
@@ -137,78 +182,28 @@ struct ContentView: View {
         }
     }
 
+    /// A resposta do hub é texto corrido; os estados curtos leem-se como o visor:
+    /// em maiúsculas, tipo terminal.
+    private var isShortStatus: Bool {
+        if case .answering = controller.phase { return false }
+        return true
+    }
+
     private var headlineColor: Color {
         switch controller.phase {
         case .idle: return Palette.ink
-        case .listening: return Palette.pink
+        case .listening: return Palette.crimson
         case .uploading: return Palette.amber
-        case .waiting: return Palette.violet
-        case .answering: return Palette.mint
-        case .failed: return Palette.red
+        case .waiting: return Palette.muted
+        case .answering: return Palette.ink
+        case .failed: return Palette.crimson
         }
     }
 
     // MARK: - Action
 
-    private var actionButton: some View {
-        Button(action: primaryAction) {
-            HStack(spacing: 4) {
-                Image(systemName: primaryIcon)
-                    .font(.system(size: 12, weight: .semibold))
-                Text(primaryTitle)
-                    .font(.system(.footnote, design: .rounded, weight: .semibold))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 7)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(primaryTint)
-        .accessibilityHint(Text(accessibilityHint))
-    }
-
-    private var primaryTitle: String {
-        if !controller.pairingReady { return "Emparelhar" }
-        switch controller.phase {
-        case .listening: return "Enviar"
-        case .uploading, .waiting: return "Cancelar"
-        case .failed: return controller.hasPendingTask ? "Ver estado" : "Tentar de novo"
-        case .answering: return "Ver tudo"
-        case .idle: return "Gravar voz"
-        }
-    }
-
-    private var primaryIcon: String {
-        if !controller.pairingReady { return "lock.fill" }
-        switch controller.phase {
-        case .listening: return "arrow.up.circle.fill"
-        case .uploading, .waiting: return "xmark.circle"
-        case .failed: return "arrow.clockwise"
-        case .answering: return "doc.text"
-        case .idle: return "mic.fill"
-        }
-    }
-
-    private var primaryTint: Color {
-        if !controller.pairingReady { return Palette.amber }
-        switch controller.phase {
-        case .listening: return Palette.pink
-        case .uploading, .waiting: return Palette.blue
-        case .failed: return Palette.red
-        case .answering: return Palette.mint
-        default: return Palette.blue
-        }
-    }
-
-    private var accessibilityHint: String {
-        if !controller.pairingReady { return "Abre as instruções de emparelhamento" }
-        switch controller.phase {
-        case .uploading, .waiting: return "Cancela este comando"
-        case .answering: return "Abre a resposta completa e a transcrição"
-        case .failed: return controller.hasPendingTask ? "Volta a consultar o Mac mini" : "Grava um novo comando"
-        default: return "Grava um comando de voz"
-        }
-    }
-
+    /// A única ação do visor — o HUD inteiro é o botão e o que acontece depende
+    /// do estado: gravar, enviar, cancelar, abrir a resposta, tentar de novo.
     private func primaryAction() {
         if !controller.pairingReady {
             showDetails = true

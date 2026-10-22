@@ -6,36 +6,37 @@ what it is doing in under a second, and does it ever lie to me".
 
 ## Shape
 
-Three bands, fixed order, never re-arranged:
+The screen **is** the visor of a Cyberdyne T-800 — full-bleed, no chrome of our own:
 
 ```
-┌──────────────────────┐
-│      ╭──────╮        │   the character: state, colour, pose, motion
-│      │ ◉  ◉ │        │
-│                      │
-│   headline (1–4 ln)  │   what is happening, or the answer
-│   "Ouvi: …"          │   what the hub actually heard
-│   footnote           │   provenance: backend · duration
-│                      │
-│  ┌────────────────┐  │   one full-width action, label follows state
-│  │   Gravar voz   │  │
-│  └────────────────┘  │
-└──────────────────────┘
+┌────────────────────────┐
+│ T-800           10:09  │   model on the system clock's row
+│ ┌────────────────────┐ │
+│ │ ▲ CYBERDYNE SYSTEMS│ │   targeting frame
+│ │ ┌ ⌜      ⌐ ┐ ┤ticks│ │   corner brackets · ruler ticks + scanner
+│ │ │  ( T-800 ) │     │ │   reticle ring + the skull (overflows it)
+│ │ └ ⌞      ⌟ ┘ ┤ticks│ │   red crosshairs · data glyphs
+│ └────────────────────┘ │
+│ ░░▒▒████▒▒░░▒▒██▒▒░░     │   dot-matrix waveform (the mic / the voice)
+│ COMO POSSO AJUDAR?     │   headline
+│ hint · provenance      │   tiny footnote over a dark scrim
+└────────────────────────┘
 ```
 
-The character and the button never flex, so a long answer can never push the primary action
-off the screen; the copy band scrolls inside its slice instead of clipping.
+The HUD itself is the only button: a tap performs the state's action (record →
+send → cancel → open the answer). The copy scrolls inside its bottom slice over a
+scrim drawn by the canvas, so a long answer never pushes anything off the screen.
 
 ## State → colour → copy
 
-| State | Pose | Headline | Action |
+| State | Pose | Headline | Tap does |
 | --- | --- | --- | --- |
-| idle | eyes open, slow breath + blink, antennae half | "Toca para falar" | Gravar voz |
-| listening | antennae up, mouth opens with mic power | "A ouvir…" | Enviar |
-| uploading | gazes up, arc waves, small mouth | "A enviar ao Mac mini…" | Cancelar |
-| waiting | eyes wander, head sways, thinking dots | "62% · A pensar com o MiMo 2.6 Pro…" | Cancelar |
-| answering | `^^` eyes, grin, bounce | the answer itself | Ver tudo |
-| failed | X eyes, frown, drooped antennae | the error, in words | Tentar de novo / Ver estado |
+| idle | ember eyes, slow head scan, calm waveform | "COMO POSSO AJUDAR?" | starts recording |
+| listening | wide bright eyes, brackets pulse, waveform is the mic power | "A OUVIR…" | sends |
+| uploading | gaze up, scanline sweeps the ring | "A ENVIAR AO MAC MINI…" | cancels |
+| waiting | searching scan, progress arc on the ring | "62% · A PENSAR COM O MIMO 2.6 PRO…" | cancels |
+| answering | jaw talks, waveform speaks, eyes at full glow | the answer itself | opens the full answer |
+| failed | dimmed chrome, right eye flickers out, HUD glitches | the error, in words | retries / records again |
 
 ## Principles applied (and where the audit pushed back)
 
@@ -76,28 +77,34 @@ python3 ~/Agent-Skills/watch-pilot-animation-agent-skill/scripts/anim-doctor.py 
 
 Animoji/Memoji cannot be rendered by third parties (private framework; no ARKit or
 RealityKit on watchOS — see [`research/Q8-memoji-animoji.md`](research/Q8-memoji-animoji.md)),
-so the avatar is a vector robot drawn with `Canvas`, and every state is a
-`AvatarPose` value (eye openness, gaze, mouth, antennae, tilt, glow, palette) rather
-than a branch in the drawing code.
+so the avatar is a **T-800 endoskeleton skull** drawn with `Canvas` — chrome dome,
+angular orbits, glowing red pupils, teeth rows, jaw pistons — and every state is an
+`AvatarPose` value (eye glow, gaze, jaw, head scan, ring speed, waveform amplitude,
+glitch) rather than a branch in the drawing code. The HUD around it (reticle ring,
+corner brackets, ruler ticks, scanner marks, glyphs, Cyberdyne logo, dot-matrix
+waveform) is part of the same canvas and animates with the state.
 
 [`watchpilot-flow.gif`](design/watchpilot-flow.gif) is a real recording of the simulator
-running a live hub task: the character goes from thinking (eyes wandering, dots) to the
-answer (`^^` eyes, bounce) while the text changes.
+running a live hub task.
 
 ## Motion
 
-`TimelineView(.animation)` drives a `Canvas` — no `Timer`, no per-frame state change.
-Reduce Motion pauses the timeline, and the state is still legible because colour and
-copy carry it. The listening bars are the only element that moves with the voice;
-everything else breathes slowly enough to read.
+`TimelineView(.animation)` drives a `Canvas` at 30 Hz — no `Timer`, no per-frame
+state change. Reduce Motion pauses the timeline, and the state is still legible
+because colour and copy carry it. The dot-matrix waveform is the only element that
+moves with the voice (mic power while listening, speech cadence while answering);
+everything else — the rotating ring, the scanning tick marks, the head sweep, the
+jaw — breathes on slow, mutually non-multiple periods so the visor never loops
+visibly.
 
-## Why the character is not a button alone
+## Why the whole visor is the button
 
-Fitts's law says the biggest target should do the main thing, so the character records — but
-a bare tappable sphere is invisible affordance. The labelled full-width button below it
-performs the same action in every state, so the screen is usable without discovering
-that the orb is tappable. In the `failed` state they diverge on purpose: the button
-recovers, the orb starts a new recording.
+Fitts's law says the biggest target should do the main thing — and the biggest
+target is the screen itself. The HUD performs the state's action on tap, and the
+footnote always says what a tap does right now ("toca para cancelar", "toca para
+abrir a resposta completa"), so the affordance is copy, not chrome. In the `failed`
+state a tap retries the pending task (or starts a new recording when none is
+pending) — recovery is always one tap away.
 
 ## Screenshots
 
