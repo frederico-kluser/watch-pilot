@@ -60,6 +60,18 @@ Two audit findings were deliberately **not** acted on, because they were wrong o
 inapplicable: contrast is measured at 6.0–14.3:1 (no violation), and the 44 pt target
 rule is already satisfied. The debug-only smoke-test copy is not user-facing.
 
+## Changing the animation
+
+The animation has its own skill: **`watch-pilot-animation-agent-skill`**
+(`~/Agent-Skills/watch-pilot-animation-agent-skill`). It explains what was used,
+maps every symbol to a file and line, and has recipes for changing the face, the body,
+the geometry, the timing and the colours — plus a doctor that verifies one pose per
+state, the frame size and the palette contrast:
+
+```bash
+python3 ~/Agent-Skills/watch-pilot-animation-agent-skill/scripts/anim-doctor.py --build
+```
+
 ## The character instead of a Memoji
 
 Animoji/Memoji cannot be rendered by third parties (private framework; no ARKit or

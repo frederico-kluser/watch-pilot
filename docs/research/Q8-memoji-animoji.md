@@ -115,7 +115,8 @@ com melhor relação controlo/custo.
 
 ## Decisão
 
-Implementado `AssistantAvatar` (`apps/watch/WatchPilot/UI/AssistantAvatar.swift`):
+Implementado `AssistantAvatar` (`apps/watch/WatchPilot/UI/AssistantAvatar.swift`; a manutenção
+está documentada na skill `watch-pilot-animation-agent-skill`):
 personagem próprio com olhos, boca, antenas e tronco, uma Pose por estado do assistente:
 
 | Estado | Pose |
