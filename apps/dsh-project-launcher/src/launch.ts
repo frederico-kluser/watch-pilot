@@ -30,14 +30,24 @@ export interface AgentsLike {
   }): Promise<unknown>
 }
 
-/** The session controller slice: admit one prompt into a Session. */
+/** The session controller slice: resume a Session and admit one prompt. */
 export interface SessionControllerLike {
-  prompt(request: {
-    requestId: string
-    sessionId: string
-    mode: 'queue' | 'steer'
-    content: readonly { type: 'text'; text: string }[]
-  }): Promise<{ accepted: boolean } | unknown>
+  /**
+   * Resolve or resume the Session's Agent (the controller's contract: a prompt
+   * is admitted *after* the session is resumed). Optional: older compositions
+   * resume lazily inside `prompt`.
+   */
+  resolveAgent?(sessionId: string): Promise<unknown>
+  /** `signal` is mandatory on the real Remote — `prompt` aborts on it first. */
+  prompt(
+    request: {
+      requestId: string
+      sessionId: string
+      mode: 'queue' | 'steer'
+      content: readonly { type: 'text'; text: string }[]
+    },
+    signal: AbortSignal,
+  ): Promise<{ accepted: boolean } | unknown>
 }
 
 /** The default model slice. */
@@ -96,7 +106,7 @@ export async function launchPrompt(
     throw new LauncherError('branch-exists', `branch "${plan.branch}" already exists`)
   }
 
-  await createWorktree(host.runner, host.fs, plan, timeoutMs)
+  await createWorktree(host.runner, host.fs, plan, facts.root, timeoutMs)
 
   const sessionId = `session-${randomUUID()}`
   const { provider, model } = host.agentDefaultModel.currentSelection()
@@ -108,12 +118,14 @@ export async function launchPrompt(
 
   let promptAccepted = false
   try {
+    // The controller admits prompts *after* the Session is resumed.
+    await host.sessionController.resolveAgent?.(sessionId)
     const receipt = await host.sessionController.prompt({
       requestId: `request-${randomUUID()}`,
       sessionId,
       mode: 'queue',
       content: [{ type: 'text', text: prompt }],
-    })
+    }, new AbortController().signal)
     promptAccepted = (receipt as { accepted?: boolean } | undefined)?.accepted !== false
   } catch {
     // The Session exists inside the worktree even when prompt admission is

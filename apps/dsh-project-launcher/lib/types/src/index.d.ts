@@ -72,9 +72,6 @@ export declare const projectFs: FsLike;
 interface ContextLike {
     get(name: string): unknown;
     effect(disposer: () => void | (() => void), label?: string): void;
-    tools?: {
-        register(definition: unknown): unknown;
-    };
     webServer?: {
         register(route: {
             kind: 'exact' | 'prefix';

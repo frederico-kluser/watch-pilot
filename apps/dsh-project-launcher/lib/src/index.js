@@ -49,7 +49,8 @@ export function runnerFrom(subprocess) {
             try {
                 const child = subprocess.spawn({
                     argv: ['git', ...command],
-                    cwd: options.cwd,
+                    // The runtime reads `spec.cwd` (never undefined): default to this process.
+                    cwd: options.cwd ?? process.cwd(),
                     stdio: { stdin: 'ignore', stdout: { maxBytes: 1 << 20 }, stderr: { maxBytes: 1 << 16 } },
                     graceMs: 2_000,
                     signal: abort.signal,
@@ -106,6 +107,9 @@ export const projectFs = {
 };
 export function apply(ctx, config = DEFAULT_CONFIG) {
     assertValidConfig({ ...DEFAULT_CONFIG, ...config });
+    // Services are read through `get()`: direct property access throws
+    // "cannot get property … without inject" for anything not declared there.
+    const tools = ctx.get('tools');
     const webServer = ctx.webServer ?? ctx.get('webServer');
     const connection = ctx.connection ?? ctx.get('connection');
     const subprocess = ctx.subprocess ?? ctx.get('subprocess');
@@ -147,8 +151,7 @@ export function apply(ctx, config = DEFAULT_CONFIG) {
         ? { runner, fs: gitFileFs, sessionController, agents, agentDefaultModel }
         : undefined;
     // ── Tools (the agent surface) ──────────────────────────────────────────
-    if (ctx.tools !== undefined) {
-        const tools = ctx.tools;
+    if (tools !== undefined) {
         tools.register({
             name: 'projects_list',
             description: 'List the known projects: name, absolute path, branch, worktrees and last commit.',

@@ -34,7 +34,7 @@ export async function launchPrompt(host, request) {
     if (await branchExists(host.runner, facts.root, plan.branch, timeoutMs)) {
         throw new LauncherError('branch-exists', `branch "${plan.branch}" already exists`);
     }
-    await createWorktree(host.runner, host.fs, plan, timeoutMs);
+    await createWorktree(host.runner, host.fs, plan, facts.root, timeoutMs);
     const sessionId = `session-${randomUUID()}`;
     const { provider, model } = host.agentDefaultModel.currentSelection();
     await host.agents.create({
@@ -44,12 +44,14 @@ export async function launchPrompt(host, request) {
     });
     let promptAccepted = false;
     try {
+        // The controller admits prompts *after* the Session is resumed.
+        await host.sessionController.resolveAgent?.(sessionId);
         const receipt = await host.sessionController.prompt({
             requestId: `request-${randomUUID()}`,
             sessionId,
             mode: 'queue',
             content: [{ type: 'text', text: prompt }],
-        });
+        }, new AbortController().signal);
         promptAccepted = receipt?.accepted !== false;
     }
     catch {

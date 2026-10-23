@@ -139,7 +139,7 @@ function fakeHost(overrides: Partial<Record<'branch' | 'worktree', boolean>> = {
       async create(options) { calls.created.push(options) },
     },
     sessionController: {
-      async prompt(request) { calls.prompts.push(request); return { accepted: true } },
+      async prompt(request, _signal) { calls.prompts.push(request); return { accepted: true } },
     },
     agentDefaultModel: {
       currentSelection() { return { provider: 'deepseek-official', model: 'deepseek-v4-flash' } },
@@ -159,6 +159,7 @@ test('launchPrompt creates the worktree, the session inside it and fires the pro
   assert.equal(result.worktreePath, '/repo/.worktrees/my-feature')
   assert.equal(result.promptAccepted, true)
   assert.match(calls.runs[4].join(' '), /worktree add/)
+  assert.equal(calls.runs[4][0], '-C')
   assert.equal(calls.created.length, 1)
   const created = calls.created[0] as { meta?: { cwd?: string }; sessionId: string }
   assert.equal(created.meta?.cwd, '/repo/.worktrees/my-feature')

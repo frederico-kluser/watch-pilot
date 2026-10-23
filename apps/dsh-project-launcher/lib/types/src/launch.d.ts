@@ -23,8 +23,15 @@ export interface AgentsLike {
         };
     }): Promise<unknown>;
 }
-/** The session controller slice: admit one prompt into a Session. */
+/** The session controller slice: resume a Session and admit one prompt. */
 export interface SessionControllerLike {
+    /**
+     * Resolve or resume the Session's Agent (the controller's contract: a prompt
+     * is admitted *after* the session is resumed). Optional: older compositions
+     * resume lazily inside `prompt`.
+     */
+    resolveAgent?(sessionId: string): Promise<unknown>;
+    /** `signal` is mandatory on the real Remote — `prompt` aborts on it first. */
     prompt(request: {
         requestId: string;
         sessionId: string;
@@ -33,7 +40,7 @@ export interface SessionControllerLike {
             type: 'text';
             text: string;
         }[];
-    }): Promise<{
+    }, signal: AbortSignal): Promise<{
         accepted: boolean;
     } | unknown>;
 }

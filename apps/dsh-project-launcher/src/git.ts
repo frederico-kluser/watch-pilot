@@ -90,9 +90,14 @@ export async function worktreeExists(
 /**
  * Create the planned worktree (branch + checkout) and keep the worktree root
  * out of `git status` through `.git/info/exclude`.
+ *
+ * The `git worktree add` MUST run with the target repository as cwd: running it
+ * from the host process's cwd registers the worktree on whatever repository
+ * happens to own that directory (measured: it attached to the harness checkout).
  * @param runner - process runner.
  * @param fs - file seam for the exclude file.
  * @param plan - the worktree plan.
+ * @param repoRoot - absolute root of the repository the worktree belongs to.
  * @param timeoutMs - per-command budget.
  * @throws {LauncherError} launch-failed when git refuses the creation.
  */
@@ -100,10 +105,11 @@ export async function createWorktree(
   runner: Runner,
   fs: GitFileFs,
   plan: WorktreePlan,
+  repoRoot: string,
   timeoutMs: number,
 ): Promise<void> {
   fs.mkdirp(plan.worktreeRoot)
-  await git(runner, ['worktree', 'add', plan.worktreePath, '-b', plan.branch], undefined, timeoutMs)
+  await git(runner, ['worktree', 'add', plan.worktreePath, '-b', plan.branch], repoRoot, timeoutMs)
   if (plan.excludeEntry !== null) {
     const current = fs.readFile(plan.excludeFile)
     fs.writeFile(plan.excludeFile, withExcludeEntry(current, plan.excludeEntry))
