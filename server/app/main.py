@@ -30,7 +30,7 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, 
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import activity, launches, llm, notify, security, stream, tasks, transcribe, tts, web
+from . import activity, launches, llm, notify, security, stream, tasks, transcribe, tts, visor, web
 from .config import settings
 
 app = FastAPI(title="Watch Pilot Hub", version="0.1.0", docs_url=None, redoc_url=None)
@@ -332,6 +332,41 @@ async def report_launch(launch_id: str, payload: LaunchReport) -> JSONResponse:
     if launch is None:
         raise HTTPException(404, "Pedido de lançamento não encontrado.")
     return JSONResponse(launch.to_json())
+
+
+@app.get("/api/v1/live", dependencies=[Depends(require_auth)])
+async def live_state() -> JSONResponse:
+    """One glance of the assistant for the T-800 visor.
+
+    The phase follows the last voice task: waiting while the hub works (with the
+    real ring progress), answering when it just finished, failed when it broke,
+    idle otherwise. The visor synthesises the speech cadence itself.
+    """
+    recent = tasks.recent(1)
+    phase, power, progress, line = "idle", 0.0, None, ""
+    if recent:
+        last = recent[0]
+        age = time.time() - float(last.get("updated_at") or 0)
+        status = str(last.get("status") or "")
+        if status in {"queued", "running"}:
+            phase = "waiting"
+            progress = float(last.get("progress") or 0)
+            line = str(last.get("step_description") or "A trabalhar no Mac mini…")
+        elif status == "completed" and age < 45:
+            phase = "answering"
+            line = str(last.get("ai_reply") or "")
+        elif status == "failed" and age < 45:
+            phase = "failed"
+            line = str(last.get("error") or "O turno falhou.")
+    return JSONResponse(
+        {"phase": phase, "power": power, "progress": progress, "speechLevel": -1, "line": line}
+    )
+
+
+@app.get("/visor", dependencies=[Depends(require_auth)])
+async def visor_page() -> HTMLResponse:
+    """The immersive T-800 visor — the same design as the watch, for the web."""
+    return HTMLResponse(visor.visor_html())
 
 
 @app.get("/api/v1/stream", dependencies=[Depends(require_auth)])

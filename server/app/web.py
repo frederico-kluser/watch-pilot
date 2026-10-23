@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import html
 
+from . import visor
+
 BASE_CSS = """
 :root{--bg:#07090c;--panel:#0e1218;--line:#1b2430;--ink:#e8eef6;--muted:#7e8ea3;
 --mint:#5ef2c0;--blue:#5aa9ff;--pink:#ff7ab6;--amber:#ffc45a;--red:#ff6b6b}
@@ -124,9 +126,11 @@ def dashboard(state: dict[str, object], tasks: list[dict[str, object]], events: 
     return f"""<!doctype html>
 <html lang="pt"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Watch Pilot · Mac mini M1</title><style>{BASE_CSS}</style>
-<meta http-equiv="refresh" content="5"></head>
-<body><div class="wrap">
+<meta http-equiv="refresh" content="5">
+<title>Watch Pilot · Mac mini M1</title><style>{BASE_CSS}</style></head>
+<body class="dash">
+{visor.fragment()}
+<div class="wrap">
 <header><div class="orb"></div>
 <h1>Watch Pilot<small>{_esc(state['subtitle'])}</small></h1></header>
 <section class="grid">{cards}</section>
