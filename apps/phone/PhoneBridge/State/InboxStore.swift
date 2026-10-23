@@ -82,6 +82,7 @@ final class InboxStore {
             seenIDs = seenIDs.union(remote.map(\.id))
             lastFetch = Date()
             lastError = ""
+            NSLog("INBOX: %d itens do endpoint (%d novos)", items.count, fresh)
             if fresh > 0 {
                 needsAttention = true
                 await notifyLocally(newItems: items.prefix(fresh))

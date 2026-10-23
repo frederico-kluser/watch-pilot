@@ -54,6 +54,9 @@ final class StatusMonitor {
         defer { refreshing = false }
 
         probes = await client.probeAll()
+        for probe in probes {
+            NSLog("PROBE: %@ %@ (%d ms)", probe.name, probe.online ? "online" : "offline", probe.latencyMS)
+        }
 
         var next = link
         next.paired = SecretStore.secret != nil
