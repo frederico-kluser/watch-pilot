@@ -1,0 +1,47 @@
+{
+  "name": "dsh-project-launcher",
+  "version": "0.1.0",
+  "description": "DSH plugin: know which projects exist and where they are, and fire new prompts in them already inside a fresh, named git worktree",
+  "type": "module",
+  "main": "./lib/src/index.js",
+  "types": "./lib/src/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/src/types/index.d.ts",
+      "default": "./lib/src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/src/**/*.js",
+    "lib/src/types/**/*.d.ts",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.0 <5"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test 'lib/test/*.test.js'"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "cordis",
+    "deepseek-harness",
+    "git",
+    "worktree",
+    "projects"
+  ],
+  "license": "MIT"
+}
