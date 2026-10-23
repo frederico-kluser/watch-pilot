@@ -22,13 +22,13 @@ ronda: 2
 - **Âmbito — exclui:** Android/Wear OS e relógios não-Apple; modelo de negócio/App Store Optimization; preços de LLMs/TTS já decididos; reinvenção do túnel Cloudflare ou do DSH em si.
 - **Público e profundidade esperada:** o dono do projeto (decisão de arquitetura e de roadmap), profundidade de engenharia — cada afirmação central com fonte oficial/primária e trade-offs explícitos.
 - **Critérios de «terminado»** (achados obrigatórios, verificáveis):
-  - [ ] C1 — Veredito sobre o iPhone, passo a passo (instalar/depurar no relógio, distribuir, notificações, background, rede): onde é obrigatório, onde é opcional, com fonte Apple/nível A por afirmação.
-  - [ ] C2 — Estado atual (2026) da distribuição/instalação de apps watchOS-only: App Store, TestFlight, free provisioning (validade), conta paga — o que é preciso para usar a app no dia a dia.
-  - [ ] C3 — Limites concretos de execução em background no watchOS para o nosso fluxo (gravar → upload → poll → tocar resposta): durações, APIs (background URLSession, WKApplication refresh, sessão de áudio), o que sobrevive a wrist-down.
-  - [ ] C4 — Recomendação de arquitetura de voz com trade-offs de latência: upload de ficheiro vs streaming; STT no Mac (SpeechAnalyzer) vs alternativas (whisper.cpp, SFSpeechRecognizer, serviços); TTS de volta como fala — o que mudar no nosso fluxo.
-  - [ ] C5 — Como entregar notificações do Mac para o relógio sem iPhone: opções viáveis (APNs direto watchOS + requisitos, iMessage relay, polling/WebSocket), com o que cada uma exige.
-  - [ ] C6 — Padrão recomendado de plugin DSH para integrar o hub FastAPI (webServer routes vs subprocess worker vs tunnel), onde deve viver o plugin e os riscos de segurança do control plane já documentados.
-  - [ ] C7 — Veredito final: estamos no caminho certo? Checklist do que manter, do que mudar e do que não fazer.
+  - [x] C1 — Veredito sobre o iPhone, passo a passo (instalar/depurar no relógio, distribuir, notificações, background, rede): onde é obrigatório, onde é opcional, com fonte Apple/nível A por afirmação.
+  - [x] C2 — Estado atual (2026) da distribuição/instalação de apps watchOS-only: App Store, TestFlight, free provisioning (validade), conta paga — o que é preciso para usar a app no dia a dia.
+  - [x] C3 — Limites concretos de execução em background no watchOS para o nosso fluxo (gravar → upload → poll → tocar resposta): durações, APIs (background URLSession, WKApplication refresh, sessão de áudio), o que sobrevive a wrist-down.
+  - [x] C4 — Recomendação de arquitetura de voz com trade-offs de latência: upload de ficheiro vs streaming; STT no Mac (SpeechAnalyzer) vs alternativas (whisper.cpp, SFSpeechRecognizer, serviços); TTS de volta como fala — o que mudar no nosso fluxo.
+  - [x] C5 — Como entregar notificações do Mac para o relógio sem iPhone: opções viáveis (APNs direto watchOS + requisitos, iMessage relay, polling/WebSocket), com o que cada uma exige.
+  - [x] C6 — Padrão recomendado de plugin DSH para integrar o hub FastAPI (webServer routes vs subprocess worker vs tunnel), onde deve viver o plugin e os riscos de segurança do control plane já documentados.
+  - [x] C7 — Veredito final: estamos no caminho certo? Checklist do que manter, do que mudar e do que não fazer.
 - **Perspetivas a cobrir** (quem olharia para isto de forma diferente?):
   - engenheiro de plataforma Apple (watchOS/Xcode/distribuição — o que a Apple permite de facto);
   - arquitetura de sistemas self-hosted (hub, túneis, plugin DSH, operação em Mac mini);
@@ -44,12 +44,13 @@ ronda: 2
 
 1. **iPhone: não é preciso para o que o Watch Pilot faz.** Uma app watchOS pode ser *watch-only* (sem app iOS), instala-se e atualiza-se pela App Store do próprio relógio e fala diretamente com o hub em casa por Wi-Fi [S42][S46][S50]. O iPhone só entra em três pontos: (a) **parear/configurar o Apple Watch** — o fluxo oficial exige um iPhone (companion), incluindo para depurar em hardware físico via Xcode/Device Hub [S44][S45]; (b) canal TestFlight (a instalação do beta começa no iPhone pareado) [S46]; (c) relay de rede fora de casa (Bluetooth/Wi-Fi do telemóvel) quando não há Wi-Fi conhecido nem relógio celular [S50]. **Para o uso diário em casa, com Wi-Fi, o iPhone não é necessário.**
 2. **Custo/instalação duradoura:** sem conta paga os builds de desenvolvimento expiram em **7 dias** (re-assinar); o **Apple Developer Program custa 99 USD/ano** e desbloqueia TestFlight (builds duram **90 dias**) e App Store [S16][S18][S19][S46]. Para uso pessoal via TestFlight interno **não há App Review** [S18].
-3. **Arquitetura de voz: a escolha atual está correta.** O watchOS **não expõe o framework Speech** — nem `SFSpeechRecognizer` nem `SpeechAnalyzer` [S32][S33] — logo a transcrição no Mac (SpeechAnalyzer, ~230 ms num clipe de 6,4 s, ~2,2× mais rápido que Whisper Large V3 Turbo) é a via certa [S34]. **Correção da verificação adversarial:** "STT no relógio está fora de mesa" é FALSO como absoluto — há ASR de terceiros a correr on-device no Apple Watch (WhisperKit tiny.en: 4,2 s para transcrever, +43 MB, só inglês) [S55]; mas para pt-PT, qualidade e latência, o STT no Mac continua a ser a melhor escolha. O ganho de latência seguinte vem de **sobreposição** (tokens do LLM em streaming + TTS em chunks, TTFA alvo <600 ms P50), não de mudar o transporte de áudio [S36][S38][S41].
+3. **Arquitetura de voz: a escolha atual está correta — e há um upgrade grátis à vista:** a fala da resposta pode passar a ser sintetizada LOCALMENTE (Piper ~40 ms / Kokoro ~90 ms de primeiro áudio vs ~220 ms da ElevenLabs, sem custo variável) [S60][S61]. O watchOS **não expõe o framework Speech** — nem `SFSpeechRecognizer` nem `SpeechAnalyzer` [S32][S33] — logo a transcrição no Mac (SpeechAnalyzer, ~230 ms num clipe de 6,4 s, ~2,2× mais rápido que Whisper Large V3 Turbo) é a via certa [S34]. **Correção da verificação adversarial:** "STT no relógio está fora de mesa" é FALSO como absoluto — há ASR de terceiros a correr on-device no Apple Watch (WhisperKit tiny.en: 4,2 s para transcrever, +43 MB, só inglês) [S55]; mas para pt-PT, qualidade e latência, o STT no Mac continua a ser a melhor escolha. O ganho de latência seguinte vem de **sobreposição** (tokens do LLM em streaming + TTS em chunks, TTFA alvo <600 ms P50), não de mudar o transporte de áudio [S36][S38][S41].
 4. **Limites de background do watchOS (o ponto fraco do fluxo atual):** o polling de 3 s **não sobrevive a wrist-down** sem sessão ativa; a gravação continua em background se iniciada em foreground; o playback mantém a app viva; extended runtime sessions dão 10 min–1 h por tipo [S51][S52][S53][S54]. Isto é o que precisa de trabalho a seguir.
-5. **Notificações sem iPhone:** APNs direto ao relógio desde watchOS 6 (exige conta paga) [S24][S26]; iMessage relay (já temos o canal AppleScript) [S29]; notificação local agendada pela própria app (é o que já fazemos) [S24]. Polling/WebSocket persistente está bloqueado (TN3135) [S28].
-6. **Plugin DSH: a regra que tínhamos está ERRADA — e foi derrubada na verificação.** Não é obrigatório repo próprio nem publicação em npm: a documentação oficial aceita instalação por git, tarball ou caminho local (`dsh plugin add ./hello-plugin`), e monorepos são elegíveis [S2][S57]. O que é obrigatório é o manifesto **`dsh.bundle.patch`** (um `dsh.bundle` vazio não ativa nada) [S2][S6]. O padrão canónico de integração documentado é **registar rotas em `ctx.webServer`** (o webServer do DSH até serve TLS e tem public-deployments) — não "nunca o expor"; o baseline de segurança (loopback, credencial própria, allowlists, nonce) mantém-se pelos riscos #853/#1769/#3144 [S1][S9][S10][S11]. **Logo: o plugin pode (e deve) nascer dentro do watch-pilot, publicado quando muito como tarball/npm opcional.**
+5. **Notificações sem iPhone:** APNs direto ao relógio desde watchOS 6, com device token próprio e sem transitar pelo iPhone (a exigência de "iPhone ligado" aplica-se ao forwarding) [S24][S25]; exige conta paga e `apns-topic` `.watchkitapp` [S26][S59]; iMessage relay (já temos o canal AppleScript) [S29]; notificação local agendada pela própria app (é o que já fazemos) [S24]. Polling/WebSocket persistente está bloqueado (TN3135) [S28].
+6b. **Fallback de rede:** LAN em primeiro lugar (já é o caso), Tailscale/WireGuard como fallback remoto, Cloudflare Tunnel como entrada pública extra — nunca no caminho crítico [S65][S66].
+7. **Plugin DSH: a regra que tínhamos está ERRADA — e foi derrubada na verificação.** Não é obrigatório repo próprio nem publicação em npm: a documentação oficial aceita instalação por git, tarball ou caminho local (`dsh plugin add ./hello-plugin`), e monorepos são elegíveis [S2][S57]. O que é obrigatório é o manifesto **`dsh.bundle.patch`** (um `dsh.bundle` vazio não ativa nada) [S2][S6]. O padrão canónico de integração documentado é **registar rotas em `ctx.webServer`** (o webServer do DSH até serve TLS e tem public-deployments) — não "nunca o expor"; o baseline de segurança (loopback, credencial própria, allowlists, nonce) mantém-se pelos riscos #853/#1769/#3144 [S1][S9][S10][S11]. **Logo: o plugin pode (e deve) nascer dentro do watch-pilot, publicado quando muito como tarball/npm opcional.**
 
-**Checklist do que mudar:** manter hub + STT no Mac + TTS como estão; acrescentar sobreposição de latência (streaming de tokens/TTS); resolver o wrist-down (sessão ativa ou background URLSession); notificações por notificação local + iMessage agora, APNs direto se houver conta paga; plugin DSH dentro do repo com `dsh.bundle.patch` e rotas em `ctx.webServer` com credencial própria; decidir se se compra a conta Apple (99 USD/ano) — sem ela, re-assinar de 7 em 7 dias.
+**Checklist do que mudar:** trocar o TTS da resposta por local (Piper/Kokoro no Mac); manter hub + STT no Mac + TTS como estão; acrescentar sobreposição de latência (streaming de tokens/TTS); resolver o wrist-down (sessão ativa ou background URLSession); notificações por notificação local + iMessage agora, APNs direto se houver conta paga; plugin DSH dentro do repo com `dsh.bundle.patch` e rotas em `ctx.webServer` com credencial própria; decidir se se compra a conta Apple (99 USD/ano) — sem ela, re-assinar de 7 em 7 dias.
 
 ## 2. FAQ — árvore de perguntas
 
@@ -92,13 +93,14 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 
 #### Q3.1 — O push direto APNs para uma app watchOS chega ao relógio com o iPhone pareado desligado ou ausente?
 
-- **Estado:** aberta
+- **Estado:** respondida
 - **Prioridade:** alta
-- **Confiança:** —
+- **Confiança:** moderada
 - **Origem:** contradicao (ronda 1)
-- **Resposta:** —
-- **Evidência:** —
+- **Resposta:** **Sim para push DIRETO ao relógio**: desde watchOS 6 a app watchOS regista o seu próprio device token APNs e a entrega faz-se server → APNs → relógio, sem transitar pelo iPhone [S24][S59]. A exigência de "iPhone ligado" do suporte Apple aplica-se ao push enviado AO IPHONE (notification forwarding), não ao push direto [S25]. Na prática: o relógio tem de estar online (Wi-Fi conhecido ou celular) e o `apns-topic` tem de ser o bundle ID `.watchkitapp` (com o topic do iOS o APNs descarta com `DeviceTokenNotForTopic`) [S59]. Lacuna declarada: a página de suporte Apple não foi recuperável e não há teste controlado com o iPhone literalmente desligado.
+- **Evidência:** [S24][S25][S59] (OneSignal corrobora o token próprio [S59b]).
 - **Lacunas → sub-perguntas:** —
+
 
 #### Q3.2 — Qual é o estado da conta Apple Developer do dono (gratuita ou paga)?
 
@@ -132,34 +134,25 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 
 #### Q4.2 — Qual o TTFB de TTS locais (`say`, Kokoro/Piper) no Mac mini M1 comparado com ElevenLabs (~220 ms)?
 
-- **Estado:** aberta
+- **Estado:** respondida
 - **Prioridade:** media
-- **Confiança:** —
+- **Confiança:** moderada
 - **Origem:** quantificacao (ronda 1)
-- **Resposta:** —
-- **Evidência:** —
+- **Resposta:** **Os TTS locais em Apple Silicon ganham 2–5× à ElevenLabs no primeiro áudio**: Piper ~40 ms e Kokoro ~90 ms de primeiro áudio [S60]; Kokoro CoreML sintetiza 3 s de áudio em 205 ms num M1 Mini [S61]; o `say`/AVSpeechSynthesizer é o pior dos locais (~312 ms por frase coalescida; ~47 ms se streamado) [S62]; num pipeline real com Piper o primeiro áudio fim-da-fala→som ficou em 55–83 ms [S63]. A ElevenLabs mede-se em ~100 ms de inferência no servidor e ~220 ms fim-a-fim [S36][S38]. **Implicação: a resposta falada pode (e deve) passar a ser sintetizada localmente no Mac mini** — mais rápida, sem custo variável e sem rede; as medições vêm de benchmarks de terceiros (não de estudo comparativo único).
+- **Evidência:** [S60][S61][S62][S63]; referência ElevenLabs [S36][S38].
 - **Lacunas → sub-perguntas:** —
-### Q5 — Qual o padrão de plugin DSH (Cordis) certo para integrar um hub FastAPI self-hosted, e onde deve viver esse plugin?
+
+
+#### Q5.1 — Para o hub FastAPI, o agente deve aceder por proxy de rotas HTTP no plugin, por ferramentas registadas em `ctx.tools`, ou por ambos?
 
 - **Estado:** respondida
 - **Prioridade:** alta
-- **Confiança:** moderada
-- **Origem:** brief (ronda 1)
-- **Resposta:** O caminho oficial de extensão do DSH é um plugin Cordis publicado pelo próprio (o repo oficial não aceita PRs externos), descoberto pelo tópico GitHub `dsh-plugin` e instalado com `dsh plugin add` [S3][S2]. A superfície real: `ctx.webServer.register` (exact/prefix/upgrade + fallback único) e `tapIndex` para HTTP, eventos tipados (waterfall/parallel/on), `ctx.subprocess.spawn(spec)` para workers longos, `ctx.slots` + export `./client` para UI [S1][S4][S5][S8]. Para um hub FastAPI já existente, o padrão recomendado é **proxy de rotas sobre um prefixo próprio no webServer em loopback** (com a credencial e as allowlists do plugin), ingress externo num segundo webServer isolado, subprocess só para trabalho longo; o webServer do DSH nunca se expõe — a exposição pública continua no túnel nomeado já existente [S13][S14][S7][S1]. Empacotamento: ESM pré-compilado (dist/), `dsh.bundle.patch` (um bundle vazio não ativa nada), files allowlist, gates publint/attw/check-tarball, tópico `dsh-plugin` [S2][S6][S8]. **CORRIGIDO pela verificação adversarial (3-0): repo próprio/npm NÃO é obrigatório** — a doc oficial aceita instalação por git, tarball ou caminho local (`dsh plugin add ./hello-plugin`) e monorepos são elegíveis [S2][S57]; publicar em npm + tópico `dsh-plugin` é opcional (descoberta no catálogo comunitário). Pode viver dentro do watch-pilot. Baseline de segurança: bind loopback, credencial própria (CSPRNG + digest + comparação em tempo constante), allowlists de origem e de bind, nonce para ações destrutivas; nunca tratar o sandbox como boundary (#853 RCE do control plane, #1769 escape do bwrap, #3144 denials silenciosas) [S9][S10][S11][S7].
-- **Evidência:** docs oficiais do repositório deepseek-ai/deepseek-harness (web-server.md, publish.md, CONTRIBUTING.md, cordis-tutorial/07, webhook.md, github-review.md, slots.md) lidas no checkout local e em raw [S1–S4][S13–S15]; skill local `dsh-plugin-dev-agent-skill` com medições sobre tarballs reais [S5]; plugins reais (dsh-guard-messenger, dsh-filesnap) [S6][S8]; discussions de segurança [S9–S11].
-- **Contradições:** ver §5 (bundle vazio ativa ou não; postura por omissão do webServer; estabilidade da API entre rcs).
-- **Lacunas → sub-perguntas:** Q5.1 (proxy de rotas vs ferramentas `ctx.tools` para o agente?); Q5.2 (qual a linha do DSH instalada e os nomes .d.ts atuais?); Q5.3 (#853 corrigida upstream?).
-- **Notas de método:** o pool Tavily estava totalmente indisponível (36/36 chaves revogadas/sem quota); a pesquisa usou web_search/web_fetch + leitura local, registado em §9.
-
-#### Q5.1 — Para o hub FastAPI, o agente deve aceder por proxy de rotas HTTP, por ferramentas em `ctx.tools`, ou por ambos?
-
-- **Estado:** aberta
-- **Prioridade:** alta
-- **Confiança:** —
+- **Confiança:** alta
 - **Origem:** definicao (ronda 1)
-- **Resposta:** —
-- **Evidência:** —
+- **Resposta:** **Por ambos, com divisão de papéis verificada no código real do harness**: o que é dirigido ao modelo entra por `ctx.tools.register(defineTool(...))` (todos os `tool-*` do core fazem assim) e o que é superfície HTTP entra por `ctx.webServer.register` / `registerUpgrade` / `registerFallback` [S4][S5][S64]. Exemplos concretos: `dsh-host-open-in-app` regista 3 rotas HTTP cruas em `ctx.webServer`; `dsh-webhook-github` regista 1 rota exact; `dsh-tool-web`/`dsh-tool-fs` só registam ferramentas; o `dsh-guard-messenger` combina os dois planos [S7][S64]. Para o Watch Pilot: **ferramentas em `ctx.tools`** para o agente falar com o hub (tarefas, comandos, notificações) e **rotas em `ctx.webServer`** para painel/webhooks — sem expor o hub diretamente nem alargar o bind, com a credencial/allowlists do plugin.
+- **Evidência:** código do harness e skill local (fontes primárias) [S4][S5][S7][S64].
 - **Lacunas → sub-perguntas:** —
+
 
 #### Q5.2 — Qual a linha de versão do DSH instalada no Mac mini e os nomes `.d.ts` atuais de webServer/subprocess/slots nessa linha?
 
@@ -207,7 +200,9 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 | --- | --- | --- | --- | --- | --- | --- |
 | 0 | — (brief + decomposição Q1–Q6) | 0 | 0 | 0 | — | decompor e lançar a ronda 1 |
 | 1 | Q1–Q6 (6 investigadores em paralelo) | 6 | 41 citadas | 60+ | 22 | integrar + verificação adversarial |
-| 2 | verificação adversarial (3 afirmações × 3) | 9 | — | — | — | 2 afirmações caíram e foram corrigidas; síntese |
+| 2 | verificação adversarial (3 afirmações × 3) + ronda de fecho (4 sub-perguntas) | 10 | 10 | 4 | 0 | 2 afirmações caíram e foram corrigidas; PRONTO-PARA-SINTESE |
+
+**Saturação (2026-10-22):** a ronda de fecho respondeu às 4 perguntas restantes e não alterou nenhuma resposta de prioridade alta da ronda 1 (apenas as enriqueceu: TTS local mais rápido, APNs direto resolvido, padrão ctx.tools+rotas); verificação adversarial feita; critérios C1–C7 todos `[x]`.
 
 ## 4. Matriz de evidência (afirmações centrais)
 
@@ -254,6 +249,15 @@ Origem:     brief | lacuna | contradicao | aprofundamento | definicao | perspeti
 - [S39] SpeakUp. «whisper.cpp Benchmark: Speed & Accuracy on Apple Silicon». 2026. https://getspeakup.app/blog/whisper-cpp-benchmark-mac/ · blogue · C · integral
 - [S40] Nathan C. «I kept losing ideas, so I built an Apple Watch app that feeds my AI agent (Ember)». DEV, 2026. https://dev.to/natuworkguy/i-kept-losing-ideas-so-i-built-an-apple-watch-app-that-feeds-my-ai-agent-1941 · blogue · C · integral
 - [S58] Local. «Watch Pilot — medições próprias (wp e2e, hub, 2026-10-22: custo LLM ~0,0002 USD/turno; TTS ~150 caracteres; pipeline 8–12 s)». https://github.com/frederico-kluser/watch-pilot/blob/main/README.md · documentacao · B · integral
+- [S59] drunk.support. «The Watch Can't Wait for the iPhone (APNs próprio do relógio; apns-topic .watchkitapp)». 2026. https://drunk.support/the-watch-cant-wait-for-the-iphone/ · blogue · D · integral
+- [S59b] OneSignal. «watchOS & Wear OS Support». 2026. https://documentation.onesignal.com/docs/en/watchos-and-wear-os-support · blogue · C · trechos
+- [S60] ContraCollective. «Kokoro vs Piper vs XTTS v2: Local TTS on M5 Max». 2026. https://contracollective.com/blog/kokoro-vs-piper-vs-xtts-local-text-to-speech-m5-max-2026 · blogue · C · trechos
+- [S61] mattmireles. «kokoro-coreml — Kokoro 82M for Apple Silicon». HuggingFace, 2026. https://huggingface.co/mattmireles/kokoro-coreml · documentacao · C · trechos
+- [S62] primer. «macOS TTS PCM streaming (TTFA AVSpeechSynthesizer ~47 ms streamado vs ~312 ms)». GitHub, 2026. https://raw.githubusercontent.com/hherb/primer/0f2b30a7610b57fffd82cdf6fda8956bea225f03/docs/superpowers/specs/2026-05-19-macos-tts-pcm-streaming-design.md · documentacao · C · trechos
+- [S63] RunAnywhere. «FastVoice: 63 ms First-Audio Latency on Apple Silicon». 2026. https://www.runanywhere.ai/blog/fastvoice-on-device-voice-ai-pipeline-apple-silicon · blogue · C · trechos
+- [S64] DSH. «packages/host/open-in-app + core/tools + webhook-github (padrões reais de plugins)». deepseek-harness, 2026. https://github.com/deepseek-ai/deepseek-harness · documentacao · A · integral
+- [S65] 4nonX/homelab. «Remote Access Strategy (LAN + Tailscale fallback)». GitHub, 2026. https://github.com/4nonX/homelab/blob/main/docs/network-remote-access.md · blogue · C · trechos
+- [S66] Cloudflare. «Tunnel availability and failover». developers.cloudflare.com, 2026. https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/configure-tunnels/tunnel-availability/ · documentacao · A · trechos
 - [S16] WishKit. «Apple Developer Program Cost and Enrollment». 2026. https://www.wishkit.io/blog/apple-developer-program · blogue · B · trechos
 - [S18] Drizz. «TestFlight access». 2026. https://www.drizz.dev/post/testflight-access · blogue · C · integral
 - [S19] Impactor docs. «How it works (7-day app validity)». 2026. https://mintlify.wiki/claration/Impactor/concepts/how-it-works · documentacao · C · integral
