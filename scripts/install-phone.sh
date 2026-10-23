@@ -3,6 +3,7 @@
 #
 #   scripts/install-phone.sh --pair      # write Pairing.plist from the hub's secret, then build
 #   scripts/install-phone.sh --sim       # build and install into the iOS simulator
+#   scripts/install-phone.sh --device    # build for a connected iPhone and install it
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -17,6 +18,7 @@ for arg in "$@"; do
   case "$arg" in
     --pair) MODE="pair" ;;
     --sim) MODE="sim" ;;
+    --device) MODE="device" ;;
     -h|--help) sed -n '2,5p' "$0"; exit 0 ;;
     *) echo "Erro: opção desconhecida $arg — Solução: --pair ou --sim"; exit 2 ;;
   esac
@@ -57,6 +59,18 @@ if [[ "$MODE" == "sim" ]]; then
   xcrun simctl install "$UDID" "$DD/Build/Products/Debug-iphonesimulator/PhoneBridge.app"
   xcrun simctl launch "$UDID" me.kluser.watchpilot.phone
   echo "→ instalado e lançado em $DEVICE"
+elif [[ "$MODE" == "device" ]]; then
+  UDID="$(xcrun devicectl list devices 2>/dev/null | awk '/iPhone/{print $2; exit}')"
+  if [[ -z "$UDID" ]]; then
+    echo "Erro: nenhum iPhone ligado a este Mac — Solução: liga o iPhone 16e por cabo (ou ativa a ligação por rede no Xcode) e repete."
+    exit 3
+  fi
+  echo "→ a compilar para o iPhone ($UDID)"
+  xcodebuild -project "$APP_DIR/PhoneBridge.xcodeproj" -scheme PhoneBridge -sdk iphoneos \
+    -configuration Debug -destination "id=$UDID" -derivedDataPath "$DD" build >/dev/null
+  xcrun devicectl device install app --device "$UDID" "$DD/Build/Products/Debug-iphoneos/PhoneBridge.app"
+  xcrun devicectl device process launch --device "$UDID" me.kluser.watchpilot.phone
+  echo "→ instalado e lançado no iPhone"
 else
   echo "→ a compilar para o dispositivo (unsigned)"
   xcodebuild -project "$APP_DIR/PhoneBridge.xcodeproj" -scheme PhoneBridge -sdk iphoneos \

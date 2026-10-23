@@ -24,7 +24,7 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            T800LinkView(monitor: store.monitor, intelligence: store.intelligence)
+            T800LinkView(monitor: store.monitor, intelligence: store.intelligence, turn: store.turn)
                 .tabItem { Label("T-800", systemImage: "waveform.path.ecg") }
                 .badge(store.inbox.unreadCount)
                 .tag(StartTab.link)
@@ -47,11 +47,13 @@ struct ContentView: View {
 struct T800LinkView: View {
     @Bindable var monitor: StatusMonitor
     @Bindable var intelligence: AppleIntelligence
+    @Bindable var turn: TurnController
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    turnCard
                     linkCard
                     briefingCard
                     HStack(spacing: 10) {
@@ -74,6 +76,80 @@ struct T800LinkView: View {
                     .disabled(monitor.refreshing)
                 }
             }
+        }
+    }
+
+    /// The start-to-finish path, on the phone: speak → hub → spoken reply.
+    private var turnCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("TURNO DE VOZ · PONTE COMPLETA")
+                    .font(.system(size: 9, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Palette.muted)
+                Spacer()
+                Text(turn.phase.label)
+                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                    .foregroundStyle(turnColor)
+            }
+
+            HStack(spacing: 16) {
+                Button {
+                    switch turn.phase {
+                    case .idle, .finished:
+                        turn.reset()
+                        turn.startRecording()
+                    case .recording:
+                        turn.finishAndSend()
+                    default:
+                        break
+                    }
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(turn.isRecording ? Palette.blue : Palette.crimson)
+                            .frame(width: 74, height: 74)
+                            .shadow(color: (turn.isRecording ? Palette.blue : Palette.crimson).opacity(0.6), radius: 12)
+                        Image(systemName: turn.isRecording ? "stop.fill" : "mic.fill")
+                            .font(.system(size: 26, weight: .bold))
+                            .foregroundStyle(Palette.background)
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(turn.isBusy)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(turn.isRecording ? "Toca para enviar" : "Toca para falar com o T-800")
+                        .font(.system(.footnote, design: .rounded).weight(.semibold))
+                        .foregroundStyle(Palette.ink)
+                    Text(turn.isSpeaking ? "fala a tocar · nível \(Int(turn.speakingLevel * 100))%" : "gravar → Mac mini → resposta falada")
+                        .font(.system(size: 10, design: .monospaced))
+                        .foregroundStyle(Palette.muted)
+                }
+            }
+
+            if !turn.transcript.isEmpty {
+                Text("“\(turn.transcript)”")
+                    .font(.system(.footnote, design: .rounded))
+                    .foregroundStyle(Palette.ink)
+            }
+            if !turn.reply.isEmpty {
+                Text(turn.reply)
+                    .font(.system(.footnote, design: .rounded))
+                    .foregroundStyle(Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding()
+        .background(RoundedRectangle(cornerRadius: 16).fill(Palette.surface))
+    }
+
+    private var turnColor: Color {
+        switch turn.phase {
+        case .recording: return Palette.blue
+        case .speaking: return Palette.crimson
+        case .failed: return Palette.crimson
+        case .finished: return Palette.mint
+        default: return Palette.muted
         }
     }
 
@@ -191,6 +267,15 @@ struct NotificationsView: View {
                     }
                 }
 
+                Section("Avisos no iPhone") {
+                    Button("Ativar avisos no iPhone") {
+                        Task { _ = await inbox.requestAuthorization() }
+                    }
+                    if inbox.unreadCount > 0 {
+                        Button("Marcar todas como lidas") { inbox.markAllRead() }
+                    }
+                }
+
                 Section("Enviar pelo hub") {
                     TextField("Título", text: $draftTitle)
                     TextField("Mensagem", text: $draftBody)
@@ -284,6 +369,25 @@ struct SystemView: View {
 }
 
 // MARK: - Cards
+
+extension TurnController {
+    var isRecording: Bool {
+        if case .recording = phase { return true }
+        return false
+    }
+
+    var isBusy: Bool {
+        switch phase {
+        case .uploading, .thinking, .speaking: return true
+        default: return false
+        }
+    }
+
+    var isSpeaking: Bool {
+        if case .speaking = phase { return true }
+        return false
+    }
+}
 
 struct EndpointCard: View {
     let probe: HubClient.ProbeResult

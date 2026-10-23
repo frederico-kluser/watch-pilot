@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0E4F12D687EF17E7B5E54097 /* HubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 485394CBDD965386F1C31F84 /* HubClient.swift */; };
+		10473A9BA9ED920C55F7066B /* TurnController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB02F9E5B02465DF64CD434C /* TurnController.swift */; };
 		13FFA1AF9CE3C92CFABF4C92 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A94FDCE74DD044F164645C8 /* ContentView.swift */; };
 		3A45A3BA6581C98F8301ABFB /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65714E878201EE5FF98DEFA1 /* DesignSystem.swift */; };
 		52C4859DA888B201553034B1 /* TotpGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79A8AD7D4E29D68A3B46D22C /* TotpGenerator.swift */; };
@@ -29,6 +30,7 @@
 		677205E0A7643BE093D0B239 /* AppleIntelligence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleIntelligence.swift; sourceTree = "<group>"; };
 		79A8AD7D4E29D68A3B46D22C /* TotpGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TotpGenerator.swift; sourceTree = "<group>"; };
 		82B2EDB9185E9F030C0B87FC /* PhoneBridgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneBridgeApp.swift; sourceTree = "<group>"; };
+		DB02F9E5B02465DF64CD434C /* TurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnController.swift; sourceTree = "<group>"; };
 		EF7B96B6E0DC8098A595A21D /* Pairing.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Pairing.plist; sourceTree = "<group>"; };
 		F34E9709AD4EB20C8676DBEA /* PhoneBridge.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PhoneBridge.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -86,6 +88,7 @@
 			children = (
 				4767030EF1FF2C99C039D7C3 /* InboxStore.swift */,
 				2CA58AA678E3E04A1645EE61 /* StatusMonitor.swift */,
+				DB02F9E5B02465DF64CD434C /* TurnController.swift */,
 			);
 			path = State;
 			sourceTree = "<group>";
@@ -194,6 +197,7 @@
 				8166E86353426EB1F22DE3F3 /* SecretStore.swift in Sources */,
 				BB13ECF063BF214C0078A5A5 /* StatusMonitor.swift in Sources */,
 				52C4859DA888B201553034B1 /* TotpGenerator.swift in Sources */,
+				10473A9BA9ED920C55F7066B /* TurnController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

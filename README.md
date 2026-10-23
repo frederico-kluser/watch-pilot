@@ -51,6 +51,22 @@ Screenshots of every state: [`docs/design/screenshots`](docs/design/screenshots)
 | --- | --- | --- | --- |
 | ![idle](docs/design/screenshots/01-idle.png) | ![listening](docs/design/screenshots/02-listening.png) | ![thinking](docs/design/screenshots/03-thinking.png) | ![answer](docs/design/screenshots/04-answer.png) |
 
+## The iPhone bridge (T-800 Bridge)
+
+`apps/phone/PhoneBridge` is the iPhone side of the product — the bridge from start
+to finish, processing turns on-device with **Apple Intelligence**:
+
+| Piece | What it does |
+| --- | --- |
+| Voice turn | record → hub (`/api/v1/assistant/audio`) → spoken reply played back → briefing |
+| T-800 link | shows the last turn (transcript + answer), the model and the pairing state |
+| Route watch | live probes to `watch.kluser.me/__health` and `mac.kluser.me/__cfx-health` with latency |
+| Notifications | always checks `GET /api/v1/inbox` (timer + `BGAppRefreshTask` + manual), manages read state and pushes back through `POST /api/v1/notify` |
+| Apple Intelligence | `FoundationModels` turns every turn into a short briefing and condenses notification batches, on-device |
+
+Provision and run: `scripts/install-phone.sh --pair && scripts/install-phone.sh --sim`
+(`--device` installs on a connected iPhone).
+
 ## Requirements
 
 - **Mac mini M1** (or any Apple Silicon Mac) on **macOS 26+** — `SpeechAnalyzer` is

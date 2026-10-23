@@ -34,7 +34,14 @@ struct PhoneBridgeApp: App {
 final class AppStore {
     let monitor = StatusMonitor()
     let inbox = InboxStore()
-    let intelligence = AppleIntelligence()
+    let intelligence: AppleIntelligence
+    let turn: TurnController
+
+    init() {
+        let intel = AppleIntelligence()
+        intelligence = intel
+        turn = TurnController(intelligence: intel)
+    }
 
     func bootstrap() async {
         UNUserNotificationCenter.current().delegate = NotificationRelay.shared
@@ -44,6 +51,17 @@ final class AppStore {
         inbox.start()
         scheduleBackgroundRefresh()
         await checkNow()
+        // Debug/validation hook: run a full voice turn from a prepared audio file,
+        // exactly as the microphone path would (emulated mic via generated audio).
+        if let index = ProcessInfo.processInfo.arguments.firstIndex(of: "-WPTurnFile"),
+           index + 1 < ProcessInfo.processInfo.arguments.count {
+            let path = ProcessInfo.processInfo.arguments[index + 1]
+            if let data = FileManager.default.contents(atPath: path) {
+                NSLog("TURN-START: %@ (%d bytes)", path, data.count)
+                await turn.run(data: data)
+                NSLog("TURN-DONE: fase=%@ transcrição=%@ resposta=%@", String(describing: turn.phase), turn.transcript, turn.reply)
+            }
+        }
         // Debug hook for screenshot scripts: prove the Apple Intelligence path
         // by processing the last turn immediately after launch.
         if ProcessInfo.processInfo.arguments.contains("-WPProcessTurn") {

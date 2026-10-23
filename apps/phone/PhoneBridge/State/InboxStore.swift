@@ -116,11 +116,20 @@ final class InboxStore {
 
     // MARK: - Local notifications
 
+    /// Ask for the notification permission — only from a user action, never at launch.
+    @discardableResult
+    func requestAuthorization() async -> Bool {
+        (try? await UNUserNotificationCenter.current()
+            .requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+    }
+
     private func notifyLocally(newItems: ArraySlice<Item>) async {
         // Debug hook for screenshot scripts (same flag as the watch app).
         if ProcessInfo.processInfo.arguments.contains("-WPNoNotifications") { return }
         let center = UNUserNotificationCenter.current()
-        _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
+        // The permission is requested from the UI, not here: only post when granted.
+        let settings = await center.notificationSettings()
+        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
         for item in newItems {
             let content = UNMutableNotificationContent()
             content.title = item.title

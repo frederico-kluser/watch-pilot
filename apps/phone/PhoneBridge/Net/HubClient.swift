@@ -161,6 +161,98 @@ struct HubClient {
         return try JSONDecoder().decode(InboxItem.self, from: data)
     }
 
+    /// Send one voice memo to the hub (the "start" of a turn) and get the task back.
+    func uploadAudio(_ data: Data) async throws -> String {
+        let boundary = "Boundary-\(UUID().uuidString)"
+        var body = Data()
+        body.append("--\(boundary)\r\n".data(using: .utf8)!)
+        body.append("Content-Disposition: form-data; name=\"audio_file\"; filename=\"voice_cmd.m4a\"\r\n".data(using: .utf8)!)
+        body.append("Content-Type: audio/mp4\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+
+        var lastError: Error = Failure.transport("sem candidatos")
+        for candidate in baseURLs {
+            guard var components = URLComponents(url: candidate, resolvingAgainstBaseURL: false) else { continue }
+            components.path = "/api/v1/assistant/audio"
+            guard let url = components.url else { continue }
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.timeoutInterval = 120
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+            request.setValue("application/json", forHTTPHeaderField: "Accept")
+            request.setValue("WatchPilotBridge/0.1 (iOS)", forHTTPHeaderField: "User-Agent")
+            do { request.setValue(try authHeader(), forHTTPHeaderField: "X-Watch-TOTP") }
+            catch { throw error }
+            do {
+                let (data, response) = try await session.upload(for: request, from: body)
+                guard let http = response as? HTTPURLResponse else { continue }
+                switch http.statusCode {
+                case 200..<300:
+                    let payload = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+                    if let id = payload["task_id"] as? String { return id }
+                    lastError = Failure.decoding("sem task_id")
+                case 401:
+                    throw Failure.unauthorized(reason: "401")
+                default:
+                    lastError = Failure.server(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+                }
+            } catch let failure as Failure {
+                if case .unauthorized = failure { throw failure }
+                lastError = failure
+            } catch {
+                lastError = Failure.transport(error.localizedDescription)
+            }
+        }
+        throw lastError
+    }
+
+    struct TaskProgress: Equatable {
+        let status: String
+        let progress: Double
+        let transcript: String
+        let aiReply: String
+        let replyAudioURL: String
+    }
+
+    /// Poll one task until it settles (the middle of a turn).
+    func progress(taskID: String) async throws -> TaskProgress {
+        let payload = try await performJSON(path: "api/v1/assistant/progress/\(taskID)")
+        return TaskProgress(
+            status: payload["status"] as? String ?? "running",
+            progress: payload["progress"] as? Double ?? 0,
+            transcript: payload["transcript"] as? String ?? "",
+            aiReply: payload["ai_reply"] as? String ?? "",
+            replyAudioURL: payload["reply_audio_url"] as? String ?? ""
+        )
+    }
+
+    /// The answer as *fala*: the synthesised speech of one finished task.
+    func replyAudio(path: String) async throws -> Data {
+        // `reply_audio_url` arrives as "/api/v1/assistant/reply/{id}" — do not
+        // double the leading slash or the hub answers 404.
+        let clean = path.hasPrefix("/") ? String(path.dropFirst()) : path
+        for candidate in baseURLs {
+            guard var components = URLComponents(url: candidate, resolvingAgainstBaseURL: false) else { continue }
+            components.path = "/" + clean
+            guard let url = components.url else { continue }
+            var request = URLRequest(url: url)
+            request.timeoutInterval = 60
+            request.setValue("audio/*", forHTTPHeaderField: "Accept")
+            request.setValue("WatchPilotBridge/0.1 (iOS)", forHTTPHeaderField: "User-Agent")
+            do { request.setValue(try authHeader(), forHTTPHeaderField: "X-Watch-TOTP") }
+            catch { throw error }
+            do {
+                let (data, response) = try await session.data(for: request)
+                guard let http = response as? HTTPURLResponse else { continue }
+                if (200..<300).contains(http.statusCode), !data.isEmpty { return data }
+            } catch {
+                continue
+            }
+        }
+        throw Failure.transport("fala da resposta indisponível")
+    }
+
     // MARK: - Plumbing
 
     private func authHeader() throws -> String {
