@@ -20,6 +20,9 @@ import { join } from 'node:path';
 import { LauncherError, PROJECTS_LAUNCH_ROUTE, PROJECTS_LIST_ROUTE } from "./shared.js";
 import { expandPath, findProject, scanProjects } from "./projects.js";
 import { launchPrompt } from "./launch.js";
+import { HubClient } from "./hub.js";
+import { startLaunchRunner } from "./runner.js";
+import { startActivityPublisher } from "./activity.js";
 export const name = 'dsh-project-launcher';
 export const inject = ['webServer', 'connection', 'subprocess', 'sessionController', 'agents', 'agentDefaultModel'];
 const DEFAULT_CONFIG = {
@@ -319,4 +322,39 @@ export function apply(ctx, config = DEFAULT_CONFIG) {
         disposeList();
         disposeLaunch();
     }, 'dsh-project-launcher: routes');
+    // ── Phone chain: drain the hub queue + publish live activity ───────────
+    // Invisible by design: no UI, no slot, no client bundle. The plugin only
+    // turns `watch.kluser.me` launch requests into worktree sessions and mirrors
+    // the harness's live activity back to the hub for the phone to read.
+    const sessions = ctx.get('sessions');
+    const disposers = [];
+    if (launchHost !== undefined) {
+        try {
+            const hub = HubClient.live();
+            process.stderr.write('[dsh-project-launcher] phone chain ON (polling the hub launch queue)\n');
+            disposers.push(startLaunchRunner({
+                hub,
+                host: launchHost,
+                projects: inventory,
+                worktreeRoot: config.worktreeRoot,
+                timeoutMs: gitTimeoutMs,
+            }));
+            const events = ctx;
+            if (sessions !== undefined && typeof sessions.list === 'function' && typeof events.on === 'function') {
+                disposers.push(startActivityPublisher({ hub, sessions, events }));
+            }
+            else {
+                process.stderr.write('[dsh-project-launcher] activity publisher OFF (no sessions store or events)\n');
+            }
+        }
+        catch (error) {
+            // No pairing secret on this machine: routes and tools still work; the
+            // phone chain simply stays off until the hub is paired.
+            process.stderr.write(`[dsh-project-launcher] phone chain OFF: ${error instanceof Error ? error.message : String(error)}\n`);
+        }
+    }
+    ctx.effect(() => () => {
+        for (const dispose of disposers)
+            dispose();
+    }, 'dsh-project-launcher: phone chain');
 }

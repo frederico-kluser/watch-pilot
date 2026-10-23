@@ -79,6 +79,47 @@ export interface LaunchRequest {
 }
 
 /**
+ * Fire one prompt in a project AS IT STANDS (no new story/worktree): one session
+ * whose workspace is the project directory, with the prompt admitted.
+ * @param host - injected composition capabilities.
+ * @param request - project directory and prompt (the name is unused here).
+ * @returns the created session identity.
+ */
+export async function startPrompt(
+  host: LaunchHost,
+  request: { projectDir: string; prompt: string; timeoutMs?: number },
+): Promise<LaunchResult> {
+  const prompt = (request.prompt ?? '').trim()
+  if (prompt === '') throw new LauncherError('invalid-name', 'prompt must include non-whitespace text')
+  const sessionId = `session-${randomUUID()}`
+  const { provider, model } = host.agentDefaultModel.currentSelection()
+  await host.agents.create({
+    sessionId,
+    meta: { cwd: request.projectDir },
+    agentOptions: { provider, model },
+  })
+  let promptAccepted = false
+  try {
+    await host.sessionController.resolveAgent?.(sessionId)
+    const receipt = await host.sessionController.prompt({
+      requestId: `request-${randomUUID()}`,
+      sessionId,
+      mode: 'queue',
+      content: [{ type: 'text', text: prompt }],
+    }, new AbortController().signal)
+    promptAccepted = (receipt as { accepted?: boolean } | undefined)?.accepted !== false
+  } catch {
+    promptAccepted = false
+  }
+  return {
+    sessionId,
+    worktreePath: request.projectDir,
+    branch: '',
+    promptAccepted,
+  }
+}
+
+/**
  * Fire one prompt in a project, inside a brand new named worktree.
  * @param host - injected composition capabilities.
  * @param request - the launch request.

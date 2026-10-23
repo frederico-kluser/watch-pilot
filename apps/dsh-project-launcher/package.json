@@ -10,15 +10,11 @@
       "types": "./lib/src/types/index.d.ts",
       "default": "./lib/src/index.js"
     },
-    "./package.json": "./package.json",
-    "./client": {
-      "default": "./lib/client.cjs"
-    }
+    "./package.json": "./package.json"
   },
   "files": [
     "lib/src/**/*.js",
     "lib/src/types/**/*.d.ts",
-    "lib/client.cjs",
     "cordis.patch.yml",
     "README.md",
     "LICENSE"
@@ -29,17 +25,13 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "inject": [],
-      "platform": "web"
     }
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.0 <5"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/build-client.mjs",
+    "build": "tsc -p tsconfig.json",
     "test": "tsc -p tsconfig.json && node --test 'lib/test/*.test.js'"
   },
   "keywords": [

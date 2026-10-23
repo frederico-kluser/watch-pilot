@@ -73,6 +73,18 @@ export interface LaunchRequest {
     readonly timeoutMs?: number;
 }
 /**
+ * Fire one prompt in a project AS IT STANDS (no new story/worktree): one session
+ * whose workspace is the project directory, with the prompt admitted.
+ * @param host - injected composition capabilities.
+ * @param request - project directory and prompt (the name is unused here).
+ * @returns the created session identity.
+ */
+export declare function startPrompt(host: LaunchHost, request: {
+    projectDir: string;
+    prompt: string;
+    timeoutMs?: number;
+}): Promise<LaunchResult>;
+/**
  * Fire one prompt in a project, inside a brand new named worktree.
  * @param host - injected composition capabilities.
  * @param request - the launch request.

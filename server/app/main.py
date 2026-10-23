@@ -30,7 +30,7 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, 
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
-from . import llm, notify, security, tasks, transcribe, tts, web
+from . import activity, launches, llm, notify, security, tasks, transcribe, tts, web
 from .config import settings
 
 app = FastAPI(title="Watch Pilot Hub", version="0.1.0", docs_url=None, redoc_url=None)
@@ -282,6 +282,81 @@ async def register_device(payload: DevicePayload) -> JSONResponse:
 @app.get("/api/v1/tasks", dependencies=[Depends(require_auth)])
 async def list_tasks(limit: int = Query(default=20, ge=1, le=100)) -> JSONResponse:
     return JSONResponse({"items": tasks.recent(limit)})
+
+
+class LaunchPayload(BaseModel):
+    prompt: str = Field(min_length=1, max_length=4000)
+    project: str = Field(min_length=1, max_length=512)
+    new_story: bool = True
+    story_name: str = Field(default="", max_length=64)
+
+
+@app.post("/api/v1/launch", dependencies=[Depends(require_auth)])
+async def create_launch(payload: LaunchPayload) -> JSONResponse:
+    """Queue one launch: a prompt the DSH plugin runs inside a worktree.
+
+    ``new_story`` decides the story: True creates a fresh named worktree; False
+    runs the prompt in the project as it stands.
+    """
+    launch = launches.create(
+        prompt=payload.prompt,
+        project=payload.project,
+        new_story=payload.new_story,
+        story_name=payload.story_name,
+    )
+    return JSONResponse(launch.to_json(), status_code=202)
+
+
+@app.get("/api/v1/launches", dependencies=[Depends(require_auth)])
+async def list_launches(pending: bool = Query(default=False)) -> JSONResponse:
+    items = launches.pending() if pending else launches.recent(20)
+    return JSONResponse({"items": items})
+
+
+class LaunchReport(BaseModel):
+    status: str = Field(pattern="^(running|completed|failed)$")
+    detail: str = ""
+    worktree_path: str = ""
+    session_id: str = ""
+
+
+@app.post("/api/v1/launches/{launch_id}/report", dependencies=[Depends(require_auth)])
+async def report_launch(launch_id: str, payload: LaunchReport) -> JSONResponse:
+    launch = await launches.report(
+        launch_id,
+        payload.status,
+        detail=payload.detail,
+        worktree_path=payload.worktree_path,
+        session_id=payload.session_id,
+    )
+    if launch is None:
+        raise HTTPException(404, "Pedido de lançamento não encontrado.")
+    return JSONResponse(launch.to_json())
+
+
+@app.get("/api/v1/activity", dependencies=[Depends(require_auth)])
+async def get_activity() -> JSONResponse:
+    return JSONResponse(activity.snapshot())
+
+
+@app.post("/api/v1/activity", dependencies=[Depends(require_auth)])
+async def post_activity(payload: dict[str, Any]) -> JSONResponse:
+    return JSONResponse(activity.update(payload))
+
+
+@app.get("/api/v1/fs", dependencies=[Depends(require_auth)])
+async def browse(path: str = Query(default="~")) -> JSONResponse:
+    """List one directory's entries (names and kinds only — never contents)."""
+    target = Path(path).expanduser() if path not in {"", "~"} else Path.home()
+    target = target.resolve()
+    if not target.exists() or not target.is_dir():
+        raise HTTPException(404, "Pasta não encontrada.")
+    entries = []
+    for child in sorted(target.iterdir(), key=lambda item: (not item.is_dir(), item.name.lower())):
+        if child.name.startswith("."):
+            continue
+        entries.append({"name": child.name, "path": str(child), "is_dir": child.is_dir()})
+    return JSONResponse({"path": str(target), "parent": str(target.parent), "entries": entries})
 
 
 @app.get("/api/v1/status", dependencies=[Depends(require_auth)])
