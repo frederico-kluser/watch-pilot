@@ -1,0 +1,41 @@
+name: PhoneBridge
+options:
+  bundleIdPrefix: me.kluser
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    TARGETED_DEVICE_FAMILY: "1"
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+
+targets:
+  PhoneBridge:
+    type: application
+    platform: iOS
+    sources:
+      # Folder scanning: new Swift files are picked up by re-running `xcodegen
+      # generate`. `Pairing.plist` is provisioned by scripts/install-phone.sh and
+      # is git-ignored, so a fresh clone builds without it.
+      - path: PhoneBridge
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: me.kluser.watchpilot.phone
+        PRODUCT_NAME: PhoneBridge
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: PhoneBridge/Info.plist
+        SDKROOT: iphoneos
+        SKIP_INSTALL: NO
+        CODE_SIGN_STYLE: Automatic
+        SWIFT_EMIT_LOC_STRINGS: YES
+        ENABLE_PREVIEWS: YES
+        SUPPORTS_MACCATALYST: NO
+    scheme:
+      testTargets: []
+      gatherCoverageData: false
