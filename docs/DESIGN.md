@@ -36,11 +36,17 @@ answers opens the answer sheet — but nothing is printed on the visor.
 | State | Pose | Face | Tap does |
 | --- | --- | --- | --- |
 | idle | ember eyes, slow head scan, calm waveform | calm, waiting | starts recording |
-| listening | wide bright eyes, brackets pulse, waveform is the mic power | dilated, leaning in | sends |
+| listening | wide bright eyes, brackets pulse, waveform is the mic power — **blue while capturing, red while voice is detected** | dilated, leaning in | sends |
 | uploading | gaze up, scanline sweeps the ring | looking up | cancels |
 | waiting | searching scan, progress arc on the ring | scanning for a target | cancels |
-| answering | jaw talks, waveform speaks, eyes at full glow | talking, full glow | opens the read sheet |
+| answering | jaw talks with the **real speech level** of the reply audio, waveform speaks in red, eyes at full glow | talking, full glow | opens the read sheet |
 | failed | dimmed chrome, right eye flickers out, HUD glitches | torn, jaw slack | retries / records again |
+
+The waveform colour is data, not a branch: `AvatarPose.waveColor` mixes `Palette.blue`
+(capture) into `Palette.crimson` (speech) with a `smoothstep` on the mic power, so the
+colour breathes with the voice instead of flickering. The reply is spoken audio — the
+hub synthesises it (`server/app/tts.py`), the watch plays it (`ReplyPlayer`) and the jaw
+follows the measured level at 30 Hz (`speechLevel`), closing when the speech ends.
 
 ## Principles applied (and where the audit pushed back)
 

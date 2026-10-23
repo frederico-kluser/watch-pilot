@@ -31,6 +31,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import unicodedata
 import urllib.error
 import urllib.request
 import uuid
@@ -118,12 +119,91 @@ def multipart(field: str, filename: str, content: bytes, content_type: str) -> t
 # ---------------------------------------------------------------------------
 # Audio helpers
 # ---------------------------------------------------------------------------
-def synthesise(text: str, out: Path) -> Path:
-    """Create a watch-like voice memo: 16 kHz mono AAC in an .m4a container."""
-    say = shutil.which("say")
+TTS_MODEL = "elevenlabs/eleven-v4-turbo"
+TTS_VOICE = "george"
+OPENROUTER_SPEECH_URL = "https://openrouter.ai/api/v1/audio/speech"
+
+
+def _openrouter_key() -> str:
+    """The OpenRouter key: environment first, then the local secrets file.
+
+    The value is never printed — this helper is the only place that touches it.
+    """
+    value = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    if value:
+        return value
+    secrets_file = Path.home() / ".secrets"
+    if secrets_file.exists():
+        for line in secrets_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("#") or "OPENROUTER_API_KEY=" not in line:
+                continue
+            raw = line.split("OPENROUTER_API_KEY=", 1)[1]
+            return raw.split()[0].strip().strip('"').strip("'")
+    raise SystemExit(
+        "Erro: OPENROUTER_API_KEY não encontrada — Solução: exporta a variável ou define "
+        "OPENROUTER_API_KEY=… em ~/.secrets."
+    )
+
+
+def _to_watch_format(source: Path, out: Path) -> Path:
+    """16 kHz mono AAC in an .m4a container — exactly what VoiceRecorder writes."""
     ffmpeg = shutil.which("ffmpeg")
-    if not say or not ffmpeg:
-        raise SystemExit("Erro: say/ffmpeg em falta — Solução: instala ffmpeg (brew install ffmpeg).")
+    if not ffmpeg:
+        raise SystemExit("Erro: ffmpeg em falta — Solução: instala ffmpeg (brew install ffmpeg).")
+    subprocess.run(
+        [ffmpeg, "-y", "-loglevel", "error", "-i", str(source), "-ac", "1", "-ar", "16000",
+         "-c:a", "aac", "-b:a", "48k", str(out)],
+        check=True,
+        capture_output=True,
+    )
+    source.unlink(missing_ok=True)
+    return out
+
+
+def synthesise_openrouter(text: str, out: Path, *, model: str = TTS_MODEL, voice: str = TTS_VOICE) -> Path:
+    """Emulate the watch microphone with speech generated via OpenRouter (ElevenLabs).
+
+    The bytes come back as mp3 and are re-encoded to the exact format the watch
+    records, so the hub transcribes the same kind of file it would get from the wrist.
+    """
+    body = json.dumps(
+        {"model": model, "input": text, "voice": voice, "response_format": "mp3"}
+    ).encode()
+    request = urllib.request.Request(
+        OPENROUTER_SPEECH_URL,
+        data=body,
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {_openrouter_key()}",
+            "Content-Type": "application/json",
+            "User-Agent": USER_AGENT,
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=180) as response:
+            payload = response.read()
+            content_type = response.headers.get("Content-Type", "")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", "replace")
+        raise SystemExit(f"Erro: TTS do OpenRouter devolveu HTTP {exc.code} — Solução: {detail[:300]}") from exc
+    except urllib.error.URLError as exc:
+        raise SystemExit(f"Erro: OpenRouter inacessível — Solução: verifica a rede ({exc.reason}).") from exc
+    if not content_type.startswith("audio/") or not payload:
+        raise SystemExit(
+            f"Erro: TTS devolveu '{content_type or 'corpo vazio'}' em vez de áudio — "
+            f"Solução: {payload[:200]!r}"
+        )
+    mp3 = out.with_suffix(".mp3")
+    mp3.write_bytes(payload)
+    return _to_watch_format(mp3, out)
+
+
+def synthesise_say(text: str, out: Path) -> Path:
+    """Local fallback: macOS ``say`` rendered into the same watch format."""
+    say = shutil.which("say")
+    if not say:
+        raise SystemExit("Erro: say em falta — Solução: usa --voice-src openrouter.")
     wav = out.with_suffix(".aiff")
     # Prefer the European Portuguese voice so the transcriber sees the same accent
     # the user speaks; fall back to Brazilian and then to the system default.
@@ -133,14 +213,14 @@ def synthesise(text: str, out: Path) -> Path:
         cmd += ["-v", voice]
     cmd.append(text)
     subprocess.run(cmd, check=True, capture_output=True)
-    subprocess.run(
-        [ffmpeg, "-y", "-loglevel", "error", "-i", str(wav), "-ac", "1", "-ar", "16000",
-         "-c:a", "aac", "-b:a", "48k", str(out)],
-        check=True,
-        capture_output=True,
-    )
-    wav.unlink(missing_ok=True)
-    return out
+    return _to_watch_format(wav, out)
+
+
+def synthesise(text: str, out: Path, source: str = "openrouter") -> Path:
+    """Create a watch-like voice memo: 16 kHz mono AAC in an .m4a container."""
+    if source == "say":
+        return synthesise_say(text, out)
+    return synthesise_openrouter(text, out)
 
 
 _VOICES: set[str] | None = None
@@ -231,20 +311,50 @@ def cmd_audio(args: argparse.Namespace) -> int:
     return 0 if final.get("status") == "completed" else 1
 
 
+def _fetch_reply_audio(base: str, task_id: str, out: Path) -> tuple[Path, str]:
+    """Download the answer as *fala* from the hub (TOTP-protected route)."""
+    url = base.rstrip("/") + f"/api/v1/assistant/reply/{task_id}"
+    request_http = urllib.request.Request(
+        url,
+        method="GET",
+        headers={"X-Watch-TOTP": totp_code(), "Accept": "audio/*", "User-Agent": USER_AGENT},
+    )
+    try:
+        with urllib.request.urlopen(request_http, timeout=120) as response:
+            payload = response.read()
+            content_type = response.headers.get("Content-Type", "")
+    except urllib.error.HTTPError as exc:
+        raise SystemExit(f"Erro: fala da resposta indisponível (HTTP {exc.code}) — Solução: {exc.read()[:200]!r}") from exc
+    if not payload:
+        raise SystemExit("Erro: a fala da resposta veio vazia — Solução: vê os logs do hub.")
+    out.write_bytes(payload)
+    return out, content_type
+
+
 def cmd_ask(args: argparse.Namespace) -> int:
+    source = getattr(args, "voice_src", "openrouter")
     with tempfile.TemporaryDirectory() as tmp:
         audio = Path(tmp) / "voice_cmd.m4a"
-        synthesise(args.text, audio)
+        synthesise(args.text, audio, source=source)
         size = audio.stat().st_size
         if args.keep:
             kept = Path(args.keep).expanduser()
             shutil.copyfile(audio, kept)
             print(f"→ áudio guardado em {kept}")
-        print(f"→ voz sintetizada ({size} bytes, 16 kHz mono AAC)")
+        print(f"→ microfone emulado com voz {source} ({size} bytes, 16 kHz mono AAC)")
         task = _upload(args.base, audio)
         task_id = task["task_id"]
         print(f"→ tarefa {task_id}")
         final = _poll(args.base, task_id)
+        if final.get("status") == "completed" and final.get("reply_audio_url"):
+            reply_out = Path(getattr(args, "reply_out", "") or (Path(tmp) / f"reply-{task_id}.m4a")).expanduser()
+            path, content_type = _fetch_reply_audio(args.base, task_id, reply_out)
+            final["_reply_audio"] = {"path": str(path), "bytes": path.stat().st_size, "content_type": content_type}
+            if getattr(args, "play", False):
+                afplay = shutil.which("afplay")
+                if afplay:
+                    print("→ a tocar a fala da resposta…")
+                    subprocess.run([afplay, str(path)], check=False)
     _print_result(final)
     return 0 if final.get("status") == "completed" else 1
 
@@ -253,6 +363,13 @@ def _print_result(task: dict) -> None:
     print("\n" + "─" * 66)
     print(f"transcrição : {task.get('transcript') or '(vazia)'}")
     print(f"resposta    : {task.get('ai_reply') or '(vazia)'}")
+    speech = task.get("_reply_audio") or {}
+    if speech:
+        print(f"fala        : {speech['bytes']} bytes · {speech['content_type']} · {speech['path']}")
+    elif task.get("reply_audio_url"):
+        print(f"fala        : {task.get('reply_audio_bytes')} bytes · {task.get('tts_backend')}")
+    else:
+        print("fala        : (sem TTS — o relógio usa a cadência sintética)")
     timings = task.get("timings_ms") or {}
     print(
         "tempos      : "
@@ -280,6 +397,114 @@ def cmd_inbox(args: argparse.Namespace) -> int:
 
 def cmd_tasks(args: argparse.Namespace) -> int:
     print(json.dumps(request("GET", "/api/v1/tasks", base=args.base), indent=2, ensure_ascii=False))
+    return 0
+
+
+def _normalise(text: str) -> str:
+    stripped = "".join(c for c in unicodedata.normalize("NFD", text.lower()) if unicodedata.category(c) != "Mn")
+    return " ".join("".join(c if c.isalnum() or c == " " else " " for c in stripped).split())
+
+
+def _audio_duration(path: Path) -> float:
+    """Seconds of audio in the file, via afinfo (0 when it cannot be read)."""
+    afinfo = shutil.which("afinfo")
+    if not afinfo:
+        return 0.0
+    proc = subprocess.run([afinfo, str(path)], capture_output=True, text=True)
+    for line in proc.stdout.splitlines():
+        if "estimated duration" in line:
+            try:
+                return float(line.split()[-2])
+            except (ValueError, IndexError):
+                return 0.0
+    return 0.0
+
+
+def cmd_e2e(args: argparse.Namespace) -> int:
+    """Validar o pipeline inteiro: microfone emulado → transcrição → fala → notificações."""
+    results: list[tuple[str, bool, str]] = []
+
+    def check(name: str, ok: bool, detail: str = "") -> bool:
+        results.append((name, ok, detail))
+        print(f"  [{'OK' if ok else 'FALHOU'}] {name}" + (f" — {detail}" if detail else ""))
+        return ok
+
+    print("\n══ E2E Watch Pilot ══════════════════════════════════════════")
+
+    print("1/6 · hub e autenticação TOTP")
+    health = request("GET", "/__health", base=args.base)
+    check("hub vivo em /__health", health.get("status") == "ok", str(health))
+    status_payload = request("GET", "/api/v1/status", base=args.base)
+    check("TOTP aceite em /api/v1/status", bool(status_payload.get("model")), f"modelo {status_payload.get('model')}")
+    stt = ", ".join(f"{b['backend']}={'sim' if b['available'] else 'não'}" for b in status_payload.get("transcribe", []))
+    tts_backends = ", ".join(f"{b['backend']}={'sim' if b['available'] else 'não'}" for b in status_payload.get("tts", []))
+    check("backends de transcrição disponíveis", any(b["available"] for b in status_payload.get("transcribe", [])), stt)
+    check("backends de fala (TTS) disponíveis", any(b["available"] for b in status_payload.get("tts", [])), tts_backends)
+
+    print("2/6 · microfone emulado com áudio gerado via OpenRouter")
+    expected = args.text
+    with tempfile.TemporaryDirectory() as tmp:
+        mic_audio = Path(tmp) / "voice_cmd.m4a"
+        synthesise(expected, mic_audio, source="openrouter")
+        size = mic_audio.stat().st_size
+        duration = _audio_duration(mic_audio)
+        check("áudio do microfone gerado", size > 1000, f"{size} bytes · {duration:.2f}s · 16 kHz mono AAC")
+
+        print("3/6 · endpoint que MANDA informação (POST /api/v1/assistant/audio)")
+        task = _upload(args.base, mic_audio)
+        task_id = task.get("task_id")
+        check("upload aceite com task_id", bool(task_id), f"tarefa {task_id}")
+
+        print("4/6 · endpoint que BUSCA informação (GET /api/v1/assistant/progress/{id})")
+        final = _poll(args.base, task_id)
+        transcript = final.get("transcript") or ""
+        reply = final.get("ai_reply") or ""
+        check("tarefa concluída", final.get("status") == "completed", final.get("step_description", ""))
+        check("transcrição não vazia", bool(transcript.strip()), transcript[:90])
+        wanted, got = set(_normalise(expected).split()), set(_normalise(transcript).split())
+        overlap = len(wanted & got) / max(1, len(wanted))
+        check("transcrição corresponde ao comando falado", overlap >= 0.5, f"sobreposição de palavras {overlap:.0%}")
+        check("resposta do modelo não vazia", bool(reply.strip()), reply[:90])
+        timings = final.get("timings_ms") or {}
+        print(f"      tempos: {timings} · stt={final.get('backend')} · tts={final.get('tts_backend')}")
+
+        print("5/6 · a resposta como FALA (GET /api/v1/assistant/reply/{id})")
+        reply_url = final.get("reply_audio_url") or ""
+        check("tarefa expõe reply_audio_url", bool(reply_url), reply_url or "(vazio)")
+        if reply_url:
+            reply_path = Path(tmp) / f"reply-{task_id}.m4a"
+            path, content_type = _fetch_reply_audio(args.base, task_id, reply_path)
+            speech_bytes = path.stat().st_size
+            speech_duration = _audio_duration(path)
+            check("fala descarregada como áudio", speech_bytes > 1000 and content_type.startswith("audio/"),
+                  f"{speech_bytes} bytes · {speech_duration:.2f}s · {content_type}")
+            if args.play:
+                afplay = shutil.which("afplay")
+                if afplay:
+                    print("      a tocar a fala da resposta…")
+                    subprocess.run([afplay, str(path)], check=False)
+
+    print("6/6 · endpoint de NOTIFICAÇÕES no computador (POST /api/v1/notify + GET /api/v1/inbox)")
+    marker = f"e2e-{uuid.uuid4().hex[:8]}"
+    record = request(
+        "POST",
+        "/api/v1/notify",
+        base=args.base,
+        body=json.dumps({"title": "Watch Pilot E2E", "body": f"notificação {marker}", "progress": 1.0}).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    check("notificação registada", record.get("body", "").endswith(marker), f"id {record.get('id', '')[:8]}")
+    inbox = request("GET", "/api/v1/inbox", base=args.base)
+    items = inbox.get("items") or []
+    check("notificação visível no inbox", any(item.get("id") == record.get("id") for item in items),
+          f"{len(items)} itens no inbox")
+
+    failed = [name for name, ok, _ in results if not ok]
+    print("════════════════════════════════════════════════════════════")
+    if failed:
+        print(f"RESULTADO: {len(results) - len(failed)}/{len(results)} verificações · FALHOU: {', '.join(failed)}")
+        return 1
+    print(f"RESULTADO: {len(results)}/{len(results)} verificações — pipeline de voz validado ponta-a-ponta")
     return 0
 
 
@@ -318,7 +543,16 @@ def main(argv: list[str] | None = None) -> int:
     ask = sub.add_parser("ask", help="synthesise speech and send it")
     ask.add_argument("text")
     ask.add_argument("--keep", default="", help="copy the generated audio here")
+    ask.add_argument("--voice-src", default="openrouter", choices=["openrouter", "say"],
+                     help="where the emulated microphone audio comes from (default: openrouter)")
+    ask.add_argument("--reply-out", default="", help="save the answer speech here")
+    ask.add_argument("--play", action="store_true", help="play the answer speech on this machine")
     ask.set_defaults(func=cmd_ask)
+
+    e2e = sub.add_parser("e2e", help="validate the whole voice pipeline and both endpoints")
+    e2e.add_argument("--text", default="Watch Pilot, cria um lembrete para amanhã às nove da manhã.")
+    e2e.add_argument("--play", action="store_true", help="play the answer speech on this machine")
+    e2e.set_defaults(func=cmd_e2e)
 
     audio = sub.add_parser("audio", help="send an audio file")
     audio.add_argument("file")

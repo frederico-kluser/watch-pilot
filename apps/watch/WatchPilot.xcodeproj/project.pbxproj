@@ -14,6 +14,7 @@
 		38604691CC992A40CD375A89 /* SecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6FF2A16243CB94F3E694FAA /* SecretStore.swift */; };
 		4466C3ABE6E2DB8B3C235850 /* HubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 926A210D9EEC4B07A9006096 /* HubClient.swift */; };
 		6F584FE207C34F854A2CC89B /* AssistantAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D8D69034D3E8A1573AEFEFA /* AssistantAvatar.swift */; };
+		8E3C9A32231150FFDC44F9F7 /* ReplyPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD3AF7ACFBEEA4D9B4CA4B1F /* ReplyPlayer.swift */; };
 		9925DADBE7D0AD7CE4A4BEC5 /* VoiceRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF54CF433E6DDDA68DF77C0C /* VoiceRecorder.swift */; };
 		9B27428472A4F7EDA934665D /* T800Head.swift in Sources */ = {isa = PBXBuildFile; fileRef = 386CC38213CD9942B4225323 /* T800Head.swift */; };
 		A36233408C2D67477B59B2F7 /* AssistantController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521BC696E9679FC1D5CF4F95 /* AssistantController.swift */; };
@@ -36,6 +37,7 @@
 		AA756DB56347240E09084736 /* WatchPilotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchPilotApp.swift; sourceTree = "<group>"; };
 		C6FF2A16243CB94F3E694FAA /* SecretStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretStore.swift; sourceTree = "<group>"; };
 		C738BEAE4D4C766D8D9756F6 /* WatchPilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CD3AF7ACFBEEA4D9B4CA4B1F /* ReplyPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplyPlayer.swift; sourceTree = "<group>"; };
 		D6BB9BDC1E8231A3263CF92B /* T800HeadArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = T800HeadArt.swift; sourceTree = "<group>"; };
 		EF54CF433E6DDDA68DF77C0C /* VoiceRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceRecorder.swift; sourceTree = "<group>"; };
 		F94DFD4FD1696FB03449C735 /* RuntimeCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeCoordinator.swift; sourceTree = "<group>"; };
@@ -45,6 +47,7 @@
 		01A0145D1DD1B32B67677F6B /* Audio */ = {
 			isa = PBXGroup;
 			children = (
+				CD3AF7ACFBEEA4D9B4CA4B1F /* ReplyPlayer.swift */,
 				EF54CF433E6DDDA68DF77C0C /* VoiceRecorder.swift */,
 			);
 			path = Audio;
@@ -218,6 +221,7 @@
 				CFDF4218D1D8A686B623AB78 /* ContentView.swift in Sources */,
 				EBF321A38244277F0BB141B8 /* DesignSystem.swift in Sources */,
 				4466C3ABE6E2DB8B3C235850 /* HubClient.swift in Sources */,
+				8E3C9A32231150FFDC44F9F7 /* ReplyPlayer.swift in Sources */,
 				A5694EA1777A5C2083824121 /* RuntimeCoordinator.swift in Sources */,
 				38604691CC992A40CD375A89 /* SecretStore.swift in Sources */,
 				9B27428472A4F7EDA934665D /* T800Head.swift in Sources */,

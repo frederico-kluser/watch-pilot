@@ -103,7 +103,7 @@ def test_register_device_validates_the_token(client: TestClient, totp_code) -> N
     assert good.json()["active_tokens"] >= 1
 
 
-def test_audio_pipeline_completes(client: TestClient, totp_code, stub_llm) -> None:
+def test_audio_pipeline_completes(client: TestClient, totp_code, stub_llm, stub_tts) -> None:
     response = client.post(
         "/api/v1/assistant/audio",
         headers={"X-Watch-TOTP": totp_code()},

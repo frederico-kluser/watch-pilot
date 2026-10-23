@@ -7,6 +7,7 @@ Endpoints
 ``GET  /__health``                          unauthenticated liveness probe
 ``POST /api/v1/assistant/audio``            upload a voice command (multipart)
 ``GET  /api/v1/assistant/progress/{id}``    poll a task
+``GET  /api/v1/assistant/reply/{id}``       the answer as synthesised speech
 ``POST /api/v1/notify``                     push a notification to the user
 ``GET  /api/v1/inbox``                      recent notifications
 ``POST /api/v1/register-device``            register an APNs device token
@@ -26,10 +27,10 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
-from . import llm, notify, security, tasks, transcribe, web
+from . import llm, notify, security, tasks, transcribe, tts, web
 from .config import settings
 
 app = FastAPI(title="Watch Pilot Hub", version="0.1.0", docs_url=None, redoc_url=None)
@@ -202,6 +203,32 @@ async def upload_audio(audio_file: UploadFile = File(...)) -> JSONResponse:
     return JSONResponse(task.to_json(), status_code=202)
 
 
+REPLY_MEDIA_TYPES = {
+    ".m4a": "audio/mp4",
+    ".mp3": "audio/mpeg",
+    ".aiff": "audio/aiff",
+    ".wav": "audio/wav",
+}
+
+
+@app.get("/api/v1/assistant/reply/{task_id}", dependencies=[Depends(require_auth)])
+async def reply_audio(task_id: str) -> FileResponse:
+    """The answer as *fala*: the synthesised speech of one finished task."""
+    task = tasks.get(task_id)
+    if task is None:
+        raise HTTPException(404, "Tarefa não encontrada.")
+    if not task.reply_audio_path:
+        raise HTTPException(404, "Esta resposta não tem fala sintetizada.")
+    path = Path(task.reply_audio_path)
+    if not path.exists():
+        raise HTTPException(410, "O áudio da resposta já não existe.")
+    return FileResponse(
+        path,
+        media_type=REPLY_MEDIA_TYPES.get(path.suffix.lower(), "application/octet-stream"),
+        filename=f"reply-{task_id}{path.suffix}",
+    )
+
+
 @app.get("/api/v1/assistant/progress/{task_id}", dependencies=[Depends(require_auth)])
 async def task_progress(task_id: str) -> JSONResponse:
     task = tasks.get(task_id)
@@ -263,6 +290,7 @@ async def get_status() -> JSONResponse:
         {
             "config": settings.redacted(),
             "transcribe": transcribe.available_backends(),
+            "tts": tts.available_backends(),
             "llm_configured": bool(settings.openrouter_api_key),
             "model": settings.model,
             "reasoning_effort": settings.reasoning_effort,

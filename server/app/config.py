@@ -84,6 +84,19 @@ class Settings:
     max_tokens: int = 2048
     llm_timeout_seconds: float = 120.0
     llm_temperature: float = 0.4
+
+    # --- speech synthesis (the answer comes back as *fala*) -------------
+    tts_enabled: bool = True
+    # Ordered list; the first backend that produces audio wins.
+    tts_backends: list[str] = field(default_factory=lambda: ["openrouter", "say"])
+    # ElevenLabs through the OpenRouter audio API (same key as the reasoning step).
+    tts_model: str = "elevenlabs/eleven-v4-turbo"
+    tts_voice: str = "george"
+    # Local fallback voice for macOS `say` ("" = system default).
+    tts_say_voice: str = ""
+    tts_timeout_seconds: int = 60
+    tts_max_chars: int = 600
+
     system_prompt: str = (
         "You are Watch Pilot, the voice assistant running on a Mac mini M1. "
         "The user spoke one short command through an Apple Watch. "

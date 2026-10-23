@@ -50,5 +50,6 @@ shoot 03-thinking  -WPDemoPhase waiting
 shoot 04-answer    -WPDemoPhase answering
 shoot 05-error     -WPDemoPhase failed
 shoot 06-live-hub  -WPLiveSmoke
+shoot 07-capture   -WPDemoPhase capture
 
 echo "Pronto. Estados em $OUT"
