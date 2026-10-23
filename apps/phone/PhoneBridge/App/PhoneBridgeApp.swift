@@ -34,6 +34,7 @@ struct PhoneBridgeApp: App {
 final class AppStore {
     let monitor = StatusMonitor()
     let inbox = InboxStore()
+    let live = LiveStore()
     let intelligence: AppleIntelligence
     let turn: TurnController
 
@@ -49,8 +50,24 @@ final class AppStore {
         intelligence.checkAvailability()
         monitor.start()
         inbox.start()
+        live.start()
         scheduleBackgroundRefresh()
         await checkNow()
+        // Debug/validation hook: send one task FROM THE PHONE through the hub
+        // (proves the phone → hub → plugin → worktree chain end to end).
+        if ProcessInfo.processInfo.arguments.contains("-WPLaunchDemo") {
+            do {
+                let result = try await HubClient.live().launch(
+                    prompt: "Responde apenas: OK. Não faças mais nada.",
+                    project: "dsh-worktree-jump",
+                    newStory: true,
+                    storyName: "phone-demo",
+                )
+                NSLog("LAUNCH-DEMO: %@ status=%@ worktree=%@", result.launchID, result.status, result.worktreePath)
+            } catch {
+                NSLog("LAUNCH-DEMO: FALHOU %@", error.localizedDescription)
+            }
+        }
         // Debug/validation hook: run a full voice turn from a prepared audio file,
         // exactly as the microphone path would (emulated mic via generated audio).
         if let index = ProcessInfo.processInfo.arguments.firstIndex(of: "-WPTurnFile"),

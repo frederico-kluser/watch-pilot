@@ -253,7 +253,86 @@ struct HubClient {
         throw Failure.transport("fala da resposta indisponível")
     }
 
+    struct LaunchWire: Codable, Equatable {
+        let launchID: String
+        let status: String
+        let detail: String
+        let worktreePath: String
+        let sessionID: String
+
+        enum CodingKeys: String, CodingKey {
+            case launchID = "launch_id"
+            case status, detail
+            case worktreePath = "worktree_path"
+            case sessionID = "session_id"
+        }
+    }
+
+    struct FolderEntry: Identifiable, Codable, Equatable {
+        let name: String
+        let path: String
+        let isDir: Bool
+
+        var id: String { path }
+
+        enum CodingKeys: String, CodingKey {
+            case name, path
+            case isDir = "is_dir"
+        }
+    }
+
+    struct FolderListing: Codable, Equatable {
+        let path: String
+        let parent: String
+        let entries: [FolderEntry]
+    }
+
+    /// Create one task: a prompt the DSH plugin runs in a worktree.
+    func launch(prompt: String, project: String, newStory: Bool, storyName: String) async throws -> LaunchWire {
+        var payload: [String: Any] = [
+            "prompt": prompt,
+            "project": project,
+            "new_story": newStory,
+        ]
+        if !storyName.isEmpty { payload["story_name"] = storyName }
+        let raw = try await performJSON(method: "POST", path: "api/v1/launch", body: payload)
+        let data = try JSONSerialization.data(withJSONObject: raw)
+        return try JSONDecoder().decode(LaunchWire.self, from: data)
+    }
+
+    /// Browse one server folder (names and kinds only).
+    func folder(at path: String) async throws -> FolderListing {
+        let encoded = path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? path
+        let raw = try await performJSON(path: "api/v1/fs?path=\(encoded)")
+        let data = try JSONSerialization.data(withJSONObject: raw)
+        return try JSONDecoder().decode(FolderListing.self, from: data)
+    }
+
+    /// Live activity snapshot (who works, who does not, what they type).
+    func activity() async throws -> [String: Any] {
+        try await performJSON(path: "api/v1/activity")
+    }
+
     // MARK: - Plumbing
+
+    /// The live stream endpoint on the first reachable base URL.
+    func streamURL() throws -> URL {
+        guard let candidate = baseURLs.first else { throw Failure.transport("URL do stream inválido") }
+        guard var components = URLComponents(url: candidate, resolvingAgainstBaseURL: false) else {
+            throw Failure.transport("URL do stream inválido")
+        }
+        components.path = "/api/v1/stream"
+        guard let url = components.url else { throw Failure.transport("URL do stream inválido") }
+        return url
+    }
+
+    /// Sign one request with a fresh TOTP code (the stream mints one per connection).
+    func signed(_ request: URLRequest) throws -> URLRequest {
+        var signed = request
+        signed.setValue(try authHeader(), forHTTPHeaderField: "X-Watch-TOTP")
+        signed.setValue("WatchPilotBridge/0.1 (iOS)", forHTTPHeaderField: "User-Agent")
+        return signed
+    }
 
     private func authHeader() throws -> String {
         guard let secret = SecretStore.secret else { throw Failure.notPaired }

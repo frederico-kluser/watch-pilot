@@ -12,8 +12,11 @@
 		13FFA1AF9CE3C92CFABF4C92 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A94FDCE74DD044F164645C8 /* ContentView.swift */; };
 		3A45A3BA6581C98F8301ABFB /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65714E878201EE5FF98DEFA1 /* DesignSystem.swift */; };
 		52C4859DA888B201553034B1 /* TotpGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79A8AD7D4E29D68A3B46D22C /* TotpGenerator.swift */; };
+		5AC8DEF8B95DF6F225A7A454 /* LiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C492CB694BE74F80E1DA96AB /* LiveStore.swift */; };
+		738808C8EC0AB84BC25379A0 /* FloorViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 298447BE2DDBF1F27706F809 /* FloorViews.swift */; };
 		8166E86353426EB1F22DE3F3 /* SecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5757BAE73DEAA16786083A5D /* SecretStore.swift */; };
 		B16BCB5321BE83F8D559A405 /* PhoneBridgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B2EDB9185E9F030C0B87FC /* PhoneBridgeApp.swift */; };
+		B6FE89CE36348A118D0149B6 /* StreamClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6089955ECC990B695E6B7D1B /* StreamClient.swift */; };
 		BB13ECF063BF214C0078A5A5 /* StatusMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA58AA678E3E04A1645EE61 /* StatusMonitor.swift */; };
 		C0B00451C439DD97C5DCBD5C /* AppleIntelligence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677205E0A7643BE093D0B239 /* AppleIntelligence.swift */; };
 		E659DC6D754CC4477676133E /* Pairing.plist in Resources */ = {isa = PBXBuildFile; fileRef = EF7B96B6E0DC8098A595A21D /* Pairing.plist */; };
@@ -21,15 +24,18 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		298447BE2DDBF1F27706F809 /* FloorViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloorViews.swift; sourceTree = "<group>"; };
 		2CA58AA678E3E04A1645EE61 /* StatusMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMonitor.swift; sourceTree = "<group>"; };
 		4767030EF1FF2C99C039D7C3 /* InboxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxStore.swift; sourceTree = "<group>"; };
 		485394CBDD965386F1C31F84 /* HubClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubClient.swift; sourceTree = "<group>"; };
 		4A94FDCE74DD044F164645C8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		5757BAE73DEAA16786083A5D /* SecretStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretStore.swift; sourceTree = "<group>"; };
+		6089955ECC990B695E6B7D1B /* StreamClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamClient.swift; sourceTree = "<group>"; };
 		65714E878201EE5FF98DEFA1 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		677205E0A7643BE093D0B239 /* AppleIntelligence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleIntelligence.swift; sourceTree = "<group>"; };
 		79A8AD7D4E29D68A3B46D22C /* TotpGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TotpGenerator.swift; sourceTree = "<group>"; };
 		82B2EDB9185E9F030C0B87FC /* PhoneBridgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneBridgeApp.swift; sourceTree = "<group>"; };
+		C492CB694BE74F80E1DA96AB /* LiveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveStore.swift; sourceTree = "<group>"; };
 		DB02F9E5B02465DF64CD434C /* TurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnController.swift; sourceTree = "<group>"; };
 		EF7B96B6E0DC8098A595A21D /* Pairing.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Pairing.plist; sourceTree = "<group>"; };
 		F34E9709AD4EB20C8676DBEA /* PhoneBridge.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PhoneBridge.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -40,6 +46,7 @@
 			isa = PBXGroup;
 			children = (
 				485394CBDD965386F1C31F84 /* HubClient.swift */,
+				6089955ECC990B695E6B7D1B /* StreamClient.swift */,
 			);
 			path = Net;
 			sourceTree = "<group>";
@@ -87,6 +94,7 @@
 			isa = PBXGroup;
 			children = (
 				4767030EF1FF2C99C039D7C3 /* InboxStore.swift */,
+				C492CB694BE74F80E1DA96AB /* LiveStore.swift */,
 				2CA58AA678E3E04A1645EE61 /* StatusMonitor.swift */,
 				DB02F9E5B02465DF64CD434C /* TurnController.swift */,
 			);
@@ -114,6 +122,7 @@
 			children = (
 				4A94FDCE74DD044F164645C8 /* ContentView.swift */,
 				65714E878201EE5FF98DEFA1 /* DesignSystem.swift */,
+				298447BE2DDBF1F27706F809 /* FloorViews.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -191,11 +200,14 @@
 				C0B00451C439DD97C5DCBD5C /* AppleIntelligence.swift in Sources */,
 				13FFA1AF9CE3C92CFABF4C92 /* ContentView.swift in Sources */,
 				3A45A3BA6581C98F8301ABFB /* DesignSystem.swift in Sources */,
+				738808C8EC0AB84BC25379A0 /* FloorViews.swift in Sources */,
 				0E4F12D687EF17E7B5E54097 /* HubClient.swift in Sources */,
 				F0EF2DF19DF5C0127E6D3F91 /* InboxStore.swift in Sources */,
+				5AC8DEF8B95DF6F225A7A454 /* LiveStore.swift in Sources */,
 				B16BCB5321BE83F8D559A405 /* PhoneBridgeApp.swift in Sources */,
 				8166E86353426EB1F22DE3F3 /* SecretStore.swift in Sources */,
 				BB13ECF063BF214C0078A5A5 /* StatusMonitor.swift in Sources */,
+				B6FE89CE36348A118D0149B6 /* StreamClient.swift in Sources */,
 				52C4859DA888B201553034B1 /* TotpGenerator.swift in Sources */,
 				10473A9BA9ED920C55F7066B /* TurnController.swift in Sources */,
 			);

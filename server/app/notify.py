@@ -29,6 +29,7 @@ from pathlib import Path
 
 import httpx
 
+from . import stream
 from .config import settings
 
 INBOX: deque["Notification"] = deque(maxlen=200)
@@ -58,6 +59,7 @@ def _log_path() -> Path:
 
 def _record(notification: Notification) -> None:
     INBOX.append(notification)
+    stream.publish("notify", notification.to_json())
     try:
         with _log_path().open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(notification.to_json(), ensure_ascii=False) + "\n")

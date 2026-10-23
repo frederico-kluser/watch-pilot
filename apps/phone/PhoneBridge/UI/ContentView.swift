@@ -7,7 +7,7 @@ struct ContentView: View {
     @State private var tab = StartTab.current
 
     enum StartTab: Hashable {
-        case link, notifications, system
+        case link, launch, activity, notifications, system
 
         /// Debug hook for screenshot scripts: `-WPStartTab notifications|system`.
         static var current: StartTab {
@@ -17,6 +17,8 @@ struct ContentView: View {
             switch arguments[index + 1] {
             case "notifications": return .notifications
             case "system": return .system
+            case "launch": return .launch
+            case "activity": return .activity
             default: return .link
             }
         }
@@ -28,6 +30,14 @@ struct ContentView: View {
                 .tabItem { Label("T-800", systemImage: "waveform.path.ecg") }
                 .badge(store.inbox.unreadCount)
                 .tag(StartTab.link)
+
+            LaunchView(live: store.live, client: HubClient.live())
+                .tabItem { Label("Lançar", systemImage: "arrow.up.circle") }
+                .tag(StartTab.launch)
+
+            ActivityView(live: store.live)
+                .tabItem { Label("Atividade", systemImage: "person.2") }
+                .tag(StartTab.activity)
 
             NotificationsView(inbox: store.inbox)
                 .tabItem { Label("Notificações", systemImage: "bell.badge") }

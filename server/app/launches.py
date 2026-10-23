@@ -16,7 +16,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import notify
+from . import notify, stream
 from .config import settings
 
 
@@ -89,6 +89,7 @@ async def report(launch_id: str, status: str, detail: str = "", worktree_path: s
     launch.session_id = session_id or launch.session_id
     launch.updated_at = time.time()
     _persist(launch)
+    stream.publish("launch", launch.to_json())
     if status in {"running", "completed", "failed"}:
         headline = {
             "running": f"A trabalhar em {launch.project}",

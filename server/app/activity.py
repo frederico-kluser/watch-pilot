@@ -12,6 +12,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from . import stream
+
 # One live line per session. `state` is the harness's own vocabulary:
 # "running" (working), "idle" (not working), "waiting" (approval/question).
 SESSIONS: dict[str, dict[str, Any]] = {}
@@ -42,7 +44,9 @@ def update(payload: dict[str, Any]) -> dict[str, Any]:
             SESSIONS[session_id] = entry
             HISTORY.append(entry)
     del HISTORY[:-MAX_HISTORY]
-    return snapshot()
+    current = snapshot()
+    stream.publish("activity", current)
+    return current
 
 
 def snapshot() -> dict[str, Any]:

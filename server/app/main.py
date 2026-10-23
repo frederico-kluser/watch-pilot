@@ -27,10 +27,10 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, Request, UploadFile, status
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from . import activity, launches, llm, notify, security, tasks, transcribe, tts, web
+from . import activity, launches, llm, notify, security, stream, tasks, transcribe, tts, web
 from .config import settings
 
 app = FastAPI(title="Watch Pilot Hub", version="0.1.0", docs_url=None, redoc_url=None)
@@ -332,6 +332,24 @@ async def report_launch(launch_id: str, payload: LaunchReport) -> JSONResponse:
     if launch is None:
         raise HTTPException(404, "Pedido de lançamento não encontrado.")
     return JSONResponse(launch.to_json())
+
+
+@app.get("/api/v1/stream", dependencies=[Depends(require_auth)])
+async def event_stream(last_event_id: str | None = Header(default=None, alias="Last-Event-ID")) -> StreamingResponse:
+    """One live stream per device: notifications, launch progress and activity.
+
+    Reconnects send ``Last-Event-ID`` and get exactly the events they missed
+    (plus a fresh snapshot first, so the client reconciles from state).
+    """
+    try:
+        since = int(last_event_id) if last_event_id else 0
+    except ValueError:
+        since = 0
+    return StreamingResponse(
+        stream.event_stream(since),
+        media_type="text/event-stream",
+        headers=stream.stream_headers(),
+    )
 
 
 @app.get("/api/v1/activity", dependencies=[Depends(require_auth)])
