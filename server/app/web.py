@@ -65,17 +65,29 @@ def _esc(value: object) -> str:
 
 
 def login_page(error: str = "", next_path: str = "/") -> str:
+    """The front door: the T-800 visor itself, with the code form beneath it.
+
+    The visor is the product's face — the first thing at watch.kluser.me is the
+    same design as the watch, not a plain login card.
+    """
     message = f'<p class="err">{_esc(error)}</p>' if error else ""
     return f"""<!doctype html>
 <html lang="pt"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Watch Pilot · verificação</title><style>{BASE_CSS}</style></head>
-<body><div class="wrap">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Watch Pilot · T-800</title><style>{BASE_CSS}</style>
+<style>
+  body.login {{ background: #05080c; background-image:
+    radial-gradient(120% 90% at 50% 30%, #0b1420 0%, #05080c 62%); }}
+  .t800-root .visor {{ width: min(86vw, 46vh); margin-top: 3vh; }}
+  .login-card {{ margin: 2vh auto 3vh; }}
+</style></head>
+<body class="login">
+{visor.fragment()}
+<div class="wrap login-card">
 <form method="post" action="/__totp__">
-  <div class="orb" style="margin:0 auto 14px"></div>
-  <h1 style="font-size:17px">Watch Pilot<small>introduz o código do autenticador</small></h1>
+  <h1 style="font-size:15px">Watch Pilot<small>introduz o código do autenticador</small></h1>
   <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code"
-         maxlength="8" placeholder="000000" autofocus>
+         maxlength="8" placeholder="000000">
   <input type="hidden" name="next" value="{_esc(next_path)}">
   <button type="submit">Entrar</button>
   {message}
