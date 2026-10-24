@@ -525,6 +525,7 @@ function drawWaveform(t, pose, glitch) {
 }
 
 // ── 30 Hz loop ─────────────────────────────────────────────────────────
+const SHOW_WAVEFORM = false;
 const start = performance.now();
 function frame(now) {
   const t = (now - start) / 1000;
@@ -544,7 +545,9 @@ function frame(now) {
   drawReticle(t, pose);
   drawSkull(t, pose, glitch);
   if (pose.scanLine) drawScanLine(t);
-  drawWaveform(t, pose, glitch);
+  // O site não leva as barras de fala por baixo (pedido do dono): a banda
+  // inferior fica livre — é onde o login põe o código. O relógio mantém-nas.
+  if (SHOW_WAVEFORM) drawWaveform(t, pose, glitch);
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
