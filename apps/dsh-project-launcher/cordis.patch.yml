@@ -1,0 +1,9 @@
+# dsh-project-launcher bundle layer. Applied automatically to any composition
+# that installs this package as a bundle.
+#
+# Row order carries no load semantics: activation is service-availability
+# driven (the plugin injects webServer/connection and waits for the web
+# composition). The id is this plugin's own; it never targets another row.
+- insert:
+    - id: project-launcher
+      name: './lib/src/index.js'

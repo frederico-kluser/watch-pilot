@@ -1,0 +1,412 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0E4F12D687EF17E7B5E54097 /* HubClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 485394CBDD965386F1C31F84 /* HubClient.swift */; };
+		10473A9BA9ED920C55F7066B /* TurnController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB02F9E5B02465DF64CD434C /* TurnController.swift */; };
+		13FFA1AF9CE3C92CFABF4C92 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A94FDCE74DD044F164645C8 /* ContentView.swift */; };
+		3A45A3BA6581C98F8301ABFB /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65714E878201EE5FF98DEFA1 /* DesignSystem.swift */; };
+		52C4859DA888B201553034B1 /* TotpGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79A8AD7D4E29D68A3B46D22C /* TotpGenerator.swift */; };
+		5AC8DEF8B95DF6F225A7A454 /* LiveStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C492CB694BE74F80E1DA96AB /* LiveStore.swift */; };
+		738808C8EC0AB84BC25379A0 /* FloorViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 298447BE2DDBF1F27706F809 /* FloorViews.swift */; };
+		8166E86353426EB1F22DE3F3 /* SecretStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5757BAE73DEAA16786083A5D /* SecretStore.swift */; };
+		B16BCB5321BE83F8D559A405 /* PhoneBridgeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82B2EDB9185E9F030C0B87FC /* PhoneBridgeApp.swift */; };
+		B6FE89CE36348A118D0149B6 /* StreamClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6089955ECC990B695E6B7D1B /* StreamClient.swift */; };
+		BB13ECF063BF214C0078A5A5 /* StatusMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CA58AA678E3E04A1645EE61 /* StatusMonitor.swift */; };
+		C0B00451C439DD97C5DCBD5C /* AppleIntelligence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 677205E0A7643BE093D0B239 /* AppleIntelligence.swift */; };
+		E659DC6D754CC4477676133E /* Pairing.plist in Resources */ = {isa = PBXBuildFile; fileRef = EF7B96B6E0DC8098A595A21D /* Pairing.plist */; };
+		F0EF2DF19DF5C0127E6D3F91 /* InboxStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4767030EF1FF2C99C039D7C3 /* InboxStore.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		298447BE2DDBF1F27706F809 /* FloorViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloorViews.swift; sourceTree = "<group>"; };
+		2CA58AA678E3E04A1645EE61 /* StatusMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusMonitor.swift; sourceTree = "<group>"; };
+		4767030EF1FF2C99C039D7C3 /* InboxStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InboxStore.swift; sourceTree = "<group>"; };
+		485394CBDD965386F1C31F84 /* HubClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HubClient.swift; sourceTree = "<group>"; };
+		4A94FDCE74DD044F164645C8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		5757BAE73DEAA16786083A5D /* SecretStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretStore.swift; sourceTree = "<group>"; };
+		6089955ECC990B695E6B7D1B /* StreamClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamClient.swift; sourceTree = "<group>"; };
+		65714E878201EE5FF98DEFA1 /* DesignSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
+		677205E0A7643BE093D0B239 /* AppleIntelligence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleIntelligence.swift; sourceTree = "<group>"; };
+		79A8AD7D4E29D68A3B46D22C /* TotpGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TotpGenerator.swift; sourceTree = "<group>"; };
+		82B2EDB9185E9F030C0B87FC /* PhoneBridgeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneBridgeApp.swift; sourceTree = "<group>"; };
+		C492CB694BE74F80E1DA96AB /* LiveStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveStore.swift; sourceTree = "<group>"; };
+		DB02F9E5B02465DF64CD434C /* TurnController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TurnController.swift; sourceTree = "<group>"; };
+		EF7B96B6E0DC8098A595A21D /* Pairing.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Pairing.plist; sourceTree = "<group>"; };
+		F34E9709AD4EB20C8676DBEA /* PhoneBridge.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PhoneBridge.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		0DDC2560EC9B5692EA944AC6 /* Net */ = {
+			isa = PBXGroup;
+			children = (
+				485394CBDD965386F1C31F84 /* HubClient.swift */,
+				6089955ECC990B695E6B7D1B /* StreamClient.swift */,
+			);
+			path = Net;
+			sourceTree = "<group>";
+		};
+		260B26CB419F28961781B6FC /* PhoneBridge */ = {
+			isa = PBXGroup;
+			children = (
+				EF7B96B6E0DC8098A595A21D /* Pairing.plist */,
+				5873E72926439EFD0D848186 /* App */,
+				2D730FEBC01F4A60B393D295 /* Intelligence */,
+				0DDC2560EC9B5692EA944AC6 /* Net */,
+				2E630018005F58DEDEA03F87 /* Security */,
+				4B1CC3FB5C7D5585C2875EA3 /* State */,
+				B194639EDB0BEC5D0B4784F0 /* UI */,
+			);
+			path = PhoneBridge;
+			sourceTree = "<group>";
+		};
+		2D730FEBC01F4A60B393D295 /* Intelligence */ = {
+			isa = PBXGroup;
+			children = (
+				677205E0A7643BE093D0B239 /* AppleIntelligence.swift */,
+			);
+			path = Intelligence;
+			sourceTree = "<group>";
+		};
+		2E630018005F58DEDEA03F87 /* Security */ = {
+			isa = PBXGroup;
+			children = (
+				5757BAE73DEAA16786083A5D /* SecretStore.swift */,
+				79A8AD7D4E29D68A3B46D22C /* TotpGenerator.swift */,
+			);
+			path = Security;
+			sourceTree = "<group>";
+		};
+		45CF36901949355B8E1332A6 = {
+			isa = PBXGroup;
+			children = (
+				260B26CB419F28961781B6FC /* PhoneBridge */,
+				72C03D1B9155183D87FC6B17 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4B1CC3FB5C7D5585C2875EA3 /* State */ = {
+			isa = PBXGroup;
+			children = (
+				4767030EF1FF2C99C039D7C3 /* InboxStore.swift */,
+				C492CB694BE74F80E1DA96AB /* LiveStore.swift */,
+				2CA58AA678E3E04A1645EE61 /* StatusMonitor.swift */,
+				DB02F9E5B02465DF64CD434C /* TurnController.swift */,
+			);
+			path = State;
+			sourceTree = "<group>";
+		};
+		5873E72926439EFD0D848186 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				82B2EDB9185E9F030C0B87FC /* PhoneBridgeApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		72C03D1B9155183D87FC6B17 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F34E9709AD4EB20C8676DBEA /* PhoneBridge.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B194639EDB0BEC5D0B4784F0 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				4A94FDCE74DD044F164645C8 /* ContentView.swift */,
+				65714E878201EE5FF98DEFA1 /* DesignSystem.swift */,
+				298447BE2DDBF1F27706F809 /* FloorViews.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2049E65E03EF4596705E77E0 /* PhoneBridge */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C4E08AEC4E0C19CF8F1B3C42 /* Build configuration list for PBXNativeTarget "PhoneBridge" */;
+			buildPhases = (
+				3FC06237C7BF8FD03ED76354 /* Sources */,
+				F9A4B63D67751D265A8090FB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PhoneBridge;
+			packageProductDependencies = (
+			);
+			productName = PhoneBridge;
+			productReference = F34E9709AD4EB20C8676DBEA /* PhoneBridge.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AA4E3CF2F40C71A128D24277 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					2049E65E03EF4596705E77E0 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 4A73C3C754D40357F6B2AFE5 /* Build configuration list for PBXProject "PhoneBridge" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 45CF36901949355B8E1332A6;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 72C03D1B9155183D87FC6B17 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2049E65E03EF4596705E77E0 /* PhoneBridge */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		F9A4B63D67751D265A8090FB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E659DC6D754CC4477676133E /* Pairing.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3FC06237C7BF8FD03ED76354 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C0B00451C439DD97C5DCBD5C /* AppleIntelligence.swift in Sources */,
+				13FFA1AF9CE3C92CFABF4C92 /* ContentView.swift in Sources */,
+				3A45A3BA6581C98F8301ABFB /* DesignSystem.swift in Sources */,
+				738808C8EC0AB84BC25379A0 /* FloorViews.swift in Sources */,
+				0E4F12D687EF17E7B5E54097 /* HubClient.swift in Sources */,
+				F0EF2DF19DF5C0127E6D3F91 /* InboxStore.swift in Sources */,
+				5AC8DEF8B95DF6F225A7A454 /* LiveStore.swift in Sources */,
+				B16BCB5321BE83F8D559A405 /* PhoneBridgeApp.swift in Sources */,
+				8166E86353426EB1F22DE3F3 /* SecretStore.swift in Sources */,
+				BB13ECF063BF214C0078A5A5 /* StatusMonitor.swift in Sources */,
+				B6FE89CE36348A118D0149B6 /* StreamClient.swift in Sources */,
+				52C4859DA888B201553034B1 /* TotpGenerator.swift in Sources */,
+				10473A9BA9ED920C55F7066B /* TurnController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		02A18A71D1F7BA1CFF16B60D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		5E7D171568BD974BEDB5B934 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PhoneBridge/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = me.kluser.watchpilot.phone;
+				PRODUCT_NAME = PhoneBridge;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D3F7A62DAA4E6B951AFB4238 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		F0FD38C6F8F56579292CBECE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PhoneBridge/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = me.kluser.watchpilot.phone;
+				PRODUCT_NAME = PhoneBridge;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = NO;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4A73C3C754D40357F6B2AFE5 /* Build configuration list for PBXProject "PhoneBridge" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				02A18A71D1F7BA1CFF16B60D /* Debug */,
+				D3F7A62DAA4E6B951AFB4238 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C4E08AEC4E0C19CF8F1B3C42 /* Build configuration list for PBXNativeTarget "PhoneBridge" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F0FD38C6F8F56579292CBECE /* Debug */,
+				5E7D171568BD974BEDB5B934 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AA4E3CF2F40C71A128D24277 /* Project object */;
+}
