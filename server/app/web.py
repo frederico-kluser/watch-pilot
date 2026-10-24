@@ -12,7 +12,7 @@ from . import visor
 
 BASE_CSS = """
 :root{--bg:#07090c;--panel:#0e1218;--line:#1b2430;--ink:#e8eef6;--muted:#7e8ea3;
---mint:#5ef2c0;--blue:#5aa9ff;--pink:#ff7ab6;--amber:#ffc45a;--red:#ff6b6b}
+--mint:#ff2933;--blue:#5aa9ff;--pink:#ff7ab6;--amber:#ffc45a;--red:#ff6b6b}
 *{box-sizing:border-box}
 body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#122030 0%,var(--bg) 55%);
 color:var(--ink);font:15px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;
@@ -20,8 +20,8 @@ min-height:100vh;padding:28px 18px 60px}
 .wrap{max-width:920px;margin:0 auto}
 header{display:flex;align-items:center;gap:12px;margin-bottom:26px}
 .orb{width:34px;height:34px;border-radius:50%;
-background:radial-gradient(circle at 50% 45%,var(--mint),#1c8f78 55%,#0b3f36 100%);
-box-shadow:0 0 22px rgba(94,242,192,.45);animation:breathe 3.4s ease-in-out infinite}
+background:radial-gradient(circle at 50% 45%,var(--mint),#8f1c22 55%,#3f0b0e 100%);
+box-shadow:0 0 22px rgba(255,41,51,.45);animation:breathe 3.4s ease-in-out infinite}
 @keyframes breathe{0%,100%{transform:scale(.92);opacity:.85}50%{transform:scale(1.06);opacity:1}}
 h1{font-size:19px;margin:0;letter-spacing:-.01em}
 h1 small{display:block;font-weight:400;color:var(--muted);font-size:12px;letter-spacing:.02em}
@@ -33,7 +33,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--mute
 .card .s{font-size:12px;color:var(--muted);margin-top:2px}
 .task{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px}
 .task header{display:flex;justify-content:space-between;gap:10px;margin:0 0 6px}
-.task .st{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mint)}
+.task .st{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--blue)}
 .task .st.fail{color:var(--red)}
 .task .st.run{color:var(--amber)}
 .task .t{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -42,7 +42,7 @@ background:#0b1016;border-radius:0 8px 8px 0;font-size:14px;color:#cfe1f5}
 .task p{margin:8px 0 0;font-size:13px;color:var(--muted)}
 .bar{height:4px;border-radius:3px;background:#131b24;overflow:hidden;margin-top:10px}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--mint))}
-code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mint);
+code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#ff8a90;
 background:#0b1016;border:1px solid var(--line);border-radius:6px;padding:2px 6px}
 .empty{color:var(--muted);font-size:14px;padding:18px 0}
 .log{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:#9fb3c8}
@@ -51,9 +51,9 @@ margin:12vh auto;text-align:center}
 input[type=text]{width:100%;font:600 28px/1 ui-monospace,Menlo,monospace;letter-spacing:.36em;
 text-align:center;padding:14px 8px;border-radius:12px;border:1px solid var(--line);
 background:#0b1016;color:var(--ink);margin:18px 0 14px}
-input:focus{outline:2px solid rgba(94,242,192,.45);outline-offset:1px}
+input:focus{outline:2px solid rgba(255,41,51,.55);outline-offset:1px}
 button{width:100%;padding:13px;border-radius:12px;border:0;font-weight:650;font-size:15px;
-background:linear-gradient(180deg,#67f7c9,#2fbf95);color:#04231b;cursor:pointer}
+background:linear-gradient(180deg,#ff4a52,#c8242e);color:#fff;cursor:pointer}
 .err{color:var(--red);font-size:13px;margin-top:12px}
 .hint{color:var(--muted);font-size:12px;margin-top:14px}
 footer{margin-top:40px;color:var(--muted);font-size:11px;text-align:center}
@@ -65,36 +65,72 @@ def _esc(value: object) -> str:
 
 
 def login_page(error: str = "", next_path: str = "/") -> str:
-    """The front door: the T-800 visor itself, with the code form beneath it.
-
-    The visor is the product's face — the first thing at watch.kluser.me is the
-    same design as the watch, not a plain login card.
-    """
+    """The front door: the T-800 visor with the authenticator code **inside the
+    speech bars** — the same palette as the watch (crimson accent, blue capture)."""
     message = f'<p class="err">{_esc(error)}</p>' if error else ""
+    band = (
+        '<div class="totp-band">'
+        '<input id="totp-code" form="totp-form" type="text" name="code" '
+        'inputmode="numeric" autocomplete="one-time-code" maxlength="8" '
+        'placeholder="000000" aria-label="Código do autenticador">'
+        "</div>"
+    )
     return f"""<!doctype html>
 <html lang="pt"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Watch Pilot · T-800</title><style>{BASE_CSS}</style>
 <style>
   body.login {{ background: #05080c; background-image:
-    radial-gradient(120% 90% at 50% 30%, #0b1420 0%, #05080c 62%); }}
-  .t800-root .visor {{ width: min(86vw, 46vh); margin-top: 3vh; }}
-  .login-card {{ margin: 2vh auto 3vh; }}
+    radial-gradient(120% 90% at 50% 30%, #0b1420 0%, #05080c 62%); padding: 0; }}
+  body.login .t800-root .visor {{ width: min(86vw, 40vh); margin-top: 1.5vh; }}
+  /* O código vive nas barras de fala: banda da waveform (0.80h…0.98h do canvas). */
+  body.login .t800-root .status {{ margin-top: 1vh; }}
+  body.login .t800-root .foot {{ margin-top: .6vh; padding-bottom: 0; }}
+  .totp-band {{
+    position: absolute; left: 7%; right: 7%; top: 82.5%;
+    display: flex; justify-content: center;
+  }}
+  .totp-band input {{
+    width: 100%; text-align: center;
+    font: 700 clamp(17px, 3.1vh, 25px)/1 ui-monospace, Menlo, monospace;
+    letter-spacing: .38em; text-indent: .38em;
+    color: #ffe9ea; caret-color: #ff2933;
+    background: rgba(5, 8, 12, 0.55);
+    border: 1px solid rgba(255, 41, 51, 0.55); border-radius: 10px;
+    padding: 9px 6px; margin: 0;
+  }}
+  .totp-band input::placeholder {{ color: rgba(255, 41, 51, 0.35); }}
+  .totp-band input:focus {{ outline: 2px solid rgba(255, 41, 51, 0.8); border-color: transparent; }}
+  body.login .login-card {{
+    background: none; border: 0; padding: 0; margin: 1.2vh auto 0; max-width: 290px;
+  }}
+  .login-card button {{
+    background: linear-gradient(180deg, #ff4a52, #c8242e); color: #fff;
+    box-shadow: 0 0 18px rgba(255, 41, 51, 0.35);
+  }}
+  .login-card .hint {{ color: #6b7989; letter-spacing: .04em; }}
 </style></head>
 <body class="login">
-{visor.fragment()}
+{visor.fragment(overlay=band)}
 <div class="wrap login-card">
-<form method="post" action="/__totp__">
-  <h1 style="font-size:15px">Watch Pilot<small>introduz o código do autenticador</small></h1>
-  <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code"
-         maxlength="8" placeholder="000000">
+<form id="totp-form" method="post" action="/__totp__">
   <input type="hidden" name="next" value="{_esc(next_path)}">
+  <p class="hint">introduz o código do autenticador</p>
   <button type="submit">Entrar</button>
   {message}
   <p class="hint">O mesmo código que o teu Apple Watch envia no cabeçalho
   <code>X-Watch-TOTP</code>.</p>
 </form>
-</div></body></html>"""
+</div>
+<script>
+  const code = document.getElementById("totp-code");
+  code.addEventListener("input", () => {{
+    code.value = code.value.replace(/\D/g, "");
+    if (code.value.length === 6) document.getElementById("totp-form").submit();
+  }});
+  code.focus();
+</script>
+</body></html>"""
 
 
 def _task_card(task: dict[str, object]) -> str:

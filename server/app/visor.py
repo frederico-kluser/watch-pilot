@@ -39,11 +39,18 @@ def _state_json(state: dict | None) -> str:
     return json.dumps(seeded, separators=(",", ":")).replace("</", "<\\/")
 
 
-def fragment(state: dict | None = None) -> str:
-    """The visor as an embeddable fragment (scoped style + canvas + script)."""
+def fragment(state: dict | None = None, overlay: str = "") -> str:
+    """The visor as an embeddable fragment (scoped style + canvas + script).
+
+    ``overlay`` is markup placed inside the visor box — used by the login page
+    to put the TOTP input *in the speech bars* (the waveform band).
+    """
     return (
         _STYLE
-        + _MARKUP.replace("__ART__", _art_json()).replace("__STATE__", _state_json(state))
+        + _MARKUP.replace("__ART__", _art_json())
+        .replace("__STATE__", _state_json(state))
+        .replace('<canvas id="t800-canvas"></canvas>',
+                 '<canvas id="t800-canvas"></canvas>' + overlay)
     )
 
 
